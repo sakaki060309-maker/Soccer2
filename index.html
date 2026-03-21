@@ -1208,6 +1208,7 @@ function tryDribbleDuel(attacker, chosenDribble) {
     }
 }
 
+
 // ======================================================
 // 14. Pass lane
 // ======================================================
@@ -1266,9 +1267,15 @@ function getPassLanePenalty(passer, receiver, opponents) {
         if (laneDistance < PASS_LANE_DANGER_DISTANCE) {
             let positionWeight = 1.0;
 
-            // 中間地点に近い敵ほどカットしやすいとみなす
+            // 中間地点は強め
             if (rawT > 0.15 && rawT < 0.85) positionWeight = 1.4;
             if (rawT > 0.30 && rawT < 0.70) positionWeight = 1.8;
+
+            // パサー近くの敵も強め
+            const distToPasser = distanceBetweenPoints(opponent.x, opponent.y, ax, ay);
+
+            if (distToPasser < 60) positionWeight += 0.8;
+            if (distToPasser < 40) positionWeight += 1.0;
 
             const closeness = PASS_LANE_DANGER_DISTANCE - laneDistance;
             penalty += closeness * 6 * positionWeight;
@@ -1277,7 +1284,6 @@ function getPassLanePenalty(passer, receiver, opponents) {
 
     return penalty;
 }
-
 // ======================================================
 // 15. Pass target
 // ======================================================
