@@ -1096,8 +1096,14 @@ function updateDefendingTeam(team, ballHolder) {
     }
 
     const availableDefenders = team.filter(p => p.stunTimer <= 0);
+
     const pressingDefender = availableDefenders.length > 0
         ? getClosestPlayerToTarget(availableDefenders, ballHolder)
+        : null;
+
+    const coverCandidates = availableDefenders.filter(p => p !== pressingDefender);
+    const coverDefender = coverCandidates.length > 0
+        ? getClosestPlayerToTarget(coverCandidates, ballHolder)
         : null;
 
     for (const defender of team) {
@@ -1132,6 +1138,13 @@ function updateDefendingTeam(team, ballHolder) {
                 defender.targetX = ballHolder.x;
                 defender.targetY = ballHolder.y;
             }
+
+            setPlayerAction(defender, 'press');
+        } else if (defender === coverDefender) {
+            const coverPos = getCoverPosition(defender.team, ballHolder);
+            defender.targetX = coverPos.x;
+            defender.targetY = coverPos.y;
+            setPlayerAction(defender, 'cover');
         } else {
             setTargetToZone(defender);
         }
