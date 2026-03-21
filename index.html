@@ -2425,6 +2425,118 @@ function loop() {
 
 resetGame();
 loop();
+
+// ======================================================
+// 27. 速度操作・一時停止・コマ送り
+// 既存コードは変更せず、末尾に追記するだけ
+// ======================================================
+
+// 27.1 状態
+let gameSpeedMode = 1;   // 1 = 通常, 2 = 1/2倍, 4 = 1/4倍
+let isPausedByUser = false;
+let stepRequested = false;
+let speedFrameCounter = 0;
+
+// 27.2 元の update を保存
+const originalUpdate = update;
+
+// 27.3 update を上書きして速度制御を追加
+update = function () {
+    // 一時停止中
+    if (isPausedByUser) {
+        if (stepRequested) {
+            stepRequested = false;
+            originalUpdate(); // 1フレームだけ進める
+        }
+        return;
+    }
+
+    // 通常速度
+    if (gameSpeedMode === 1) {
+        originalUpdate();
+        return;
+    }
+
+    // 1/2倍, 1/4倍
+    speedFrameCounter++;
+
+    if (gameSpeedMode === 2) {
+        if (speedFrameCounter % 2 === 0) {
+            originalUpdate();
+        }
+        return;
+    }
+
+    if (gameSpeedMode === 4) {
+        if (speedFrameCounter % 4 === 0) {
+            originalUpdate();
+        }
+        return;
+    }
+
+    // 万一変な値になった時の保険
+    originalUpdate();
+};
+
+// 27.4 キー操作
+document.addEventListener('keydown', (e) => {
+    // 入力欄にフォーカス中なら無視したい場合の保険
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    // Space: 一時停止 / 再開
+    if (e.code === 'Space') {
+        e.preventDefault();
+        isPausedByUser = !isPausedByUser;
+        return;
+    }
+
+    // N: 一時停止中に1フレームだけ進める
+    if (e.key === 'n' || e.key === 'N') {
+        if (isPausedByUser) {
+            stepRequested = true;
+        }
+        return;
+    }
+
+    // 1: 通常速度
+    if (e.key === '1') {
+        gameSpeedMode = 1;
+        return;
+    }
+
+    // 2: 1/2倍
+    if (e.key === '2') {
+        gameSpeedMode = 2;
+        return;
+    }
+
+    // 3: 1/4倍
+    if (e.key === '3') {
+        gameSpeedMode = 4;
+        return;
+    }
+});
+
+// 27.5 画面表示を少し足したい場合は drawUI もラップ
+const originalDrawUI = drawUI;
+
+drawUI = function () {
+    originalDrawUI();
+
+    let speedText = 'x1';
+    if (gameSpeedMode === 2) speedText = 'x0.5';
+    if (gameSpeedMode === 4) speedText = 'x0.25';
+
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'left';
+
+    const pauseText = isPausedByUser ? 'PAUSE' : 'RUN';
+    ctx.fillText(`Speed: ${speedText}`, 20, 28);
+    ctx.fillText(`State: ${pauseText}`, 20, 48);
+    ctx.fillText(`Keys: 1 normal / 2 half / 3 quarter / Space pause / N step`, 20, 68);
+};
 </script>
 
 </body>
