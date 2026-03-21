@@ -1123,7 +1123,7 @@ function updateAttackingTeam(team) {
             if (nearestDefenderDistance < 120) actionProbability = 0.03;
             if (nearestDefenderDistance < 80) actionProbability = 0.05;
             if (nearestDefenderDistance < 55) actionProbability = 0.08;
-            if (nearestDefenderDistance < 35) actionProbability = 0.12;
+            if (nearestDefenderDistance < 35) actionProbability = 0.25;
 
             if (Math.random() < actionProbability) {
 
