@@ -821,8 +821,29 @@ function chooseBestPassTarget(passer, team) {
     let bestTarget = null;
     let bestScore = -Infinity;
 
+    // ===== パサーが味方の中でどれだけ前にいるかを判定 =====
+    const sortedByForwardDepth = [...team].sort((a, b) => {
+        if (passer.team === 'red') {
+            return b.x - a.x; // redはxが大きいほど前
+        } else {
+            return a.x - b.x; // blueはxが小さいほど前
+        }
+    });
+
+    const passerForwardRank = sortedByForwardDepth.findIndex(p => p === passer) + 1;
+    const passerIsTop3Forward = passerForwardRank <= 3;
+
     for (const mate of team) {
         if (mate === passer) continue;
+
+        // ===== 自分が前線3人の1人なら、自陣にいる味方へのパスはしない =====
+        const mateInOwnHalf =
+            (passer.team === 'red' && mate.x < FIELD_WIDTH / 2) ||
+            (passer.team === 'blue' && mate.x > FIELD_WIDTH / 2);
+
+        if (passerIsTop3Forward && mateInOwnHalf) {
+            continue;
+        }
 
         // ===== 距離 =====
         const dx = mate.x - passer.x;
