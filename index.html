@@ -1608,12 +1608,24 @@ function getAttackingActionProbabilities(player, state) {
     }
 
     // シュート制限
-    if (!isInShootingZone) shootProbability = 0;
+    if (!isInShootingZone) {
+        shootProbability = 0;
+    }
 
-    // 後ろ＋プレッシャー → ドリブル禁止
-    if (isBack4 && nearestDefenderDistance < 80) dribbleProbability = 0;
+    // 後ろ4枚 + プレッシャー時はドリブル禁止
+    if (isBack4 && nearestDefenderDistance < 80) {
+        dribbleProbability = 0;
+    }
 
-    if (isInOwnHalf) shootProbability = 0;
+    // 自陣ではシュート禁止
+    if (isInOwnHalf) {
+        shootProbability = 0;
+    }
+
+    // 保護期間中はパス禁止
+    if (player.stealProtectionTimer > 0) {
+        passProbability = 0;
+    }
 
     passProbability = Math.max(0, passProbability);
     shootProbability = Math.max(0, shootProbability);
