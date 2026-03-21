@@ -770,17 +770,44 @@ function distancePointToSegment(px, py, ax, ay, bx, by) {
 function getPassLanePenalty(passer, receiver, opponents) {
     let penalty = 0;
 
+    const ax = passer.x;
+    const ay = passer.y;
+    const bx = receiver.x;
+    const by = receiver.y;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const abLenSq = abx * abx + aby * aby;
+
+    if (abLenSq === 0) return 0;
+
     for (const opponent of opponents) {
         if (opponent.stunTimer > 0) continue;
 
+        const apx = opponent.x - ax;
+        const apy = opponent.y - ay;
+
+        // 敵がパス線分のどの位置にいるか
+        const rawT = (apx * abx + apy * aby) / abLenSq;
+
+        // パサーより後ろ、または受け手より先は基本無視
+        if (rawT < 0 || rawT > 1) continue;
+
         const laneDistance = distancePointToSegment(
             opponent.x, opponent.y,
-            passer.x, passer.y,
-            receiver.x, receiver.y
+            ax, ay,
+            bx, by
         );
 
         if (laneDistance < PASS_LANE_DANGER_DISTANCE) {
-            penalty += (PASS_LANE_DANGER_DISTANCE - laneDistance) * 4;
+            let positionWeight = 1.0;
+
+            // 中間地点に近い敵ほどカットしやすいとみなす
+            if (rawT > 0.15 && rawT < 0.85) positionWeight = 1.4;
+            if (rawT > 0.30 && rawT < 0.70) positionWeight = 1.8;
+
+            const closeness = PASS_LANE_DANGER_DISTANCE - laneDistance;
+            penalty += closeness * 6 * positionWeight;
         }
     }
 
@@ -859,16 +886,12 @@ function chooseBestPassTarget(passer, team) {
 
         if (passerInAttackingHalf) {
             if (rawForwardProgress < -120) {
-                // 大きく戻すバックパス
                 backwardPassPenalty = 400;
             } else if (rawForwardProgress < -60) {
-                // 中くらい戻すバックパス
                 backwardPassPenalty = 300;
             } else if (rawForwardProgress < -20) {
-                // 少し戻すバックパス
                 backwardPassPenalty = 70;
             } else if (rawForwardProgress < 20) {
-                // ほぼ横パス
                 backwardPassPenalty = 5;
             }
         }
