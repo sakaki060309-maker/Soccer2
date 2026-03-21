@@ -1306,6 +1306,7 @@ function getPassLanePenalty(passer, receiver, opponents) {
 }
 // ======================================================
 // 15. Pass target
+// 簡易オフサイド対応版（相手の最後尾基準）
 // ======================================================
 function chooseBestPassTarget(passer, team) {
     let bestTarget = null;
@@ -1336,6 +1337,38 @@ function chooseBestPassTarget(passer, team) {
     for (const mate of team) {
         if (mate === passer) continue;
 
+        // ===== 簡易オフサイド判定（相手の最後尾基準） =====
+        const opponentTeam = getOpponentTeam(passer.team);
+
+        const mateInAttackingHalf =
+            (passer.team === 'red' && mate.x > FIELD_WIDTH / 2) ||
+            (passer.team === 'blue' && mate.x < FIELD_WIDTH / 2);
+
+        const mateAheadOfBall =
+            (passer.team === 'red' && mate.x > passer.x) ||
+            (passer.team === 'blue' && mate.x < passer.x);
+
+        const sortedDefenders = [...opponentTeam].sort((a, b) => {
+            if (passer.team === 'red') {
+                return a.x - b.x; // red攻撃時は相手の左側がゴール寄り
+            } else {
+                return b.x - a.x; // blue攻撃時は相手の右側がゴール寄り
+            }
+        });
+
+        const lastDefender = sortedDefenders.length > 0 ? sortedDefenders[0] : null;
+
+        const isOffside =
+            mateInAttackingHalf &&
+            mateAheadOfBall &&
+            lastDefender &&
+            (
+                (passer.team === 'red' && mate.x > lastDefender.x) ||
+                (passer.team === 'blue' && mate.x < lastDefender.x)
+            );
+
+        if (isOffside) continue;
+
         // ===== 前線3人ルール =====
         // パサー以外に敵陣の味方がいる時だけ発動
         const mateInOwnHalf =
@@ -1360,8 +1393,6 @@ function chooseBestPassTarget(passer, team) {
         else distanceScore = -1000;
 
         // ===== 敵との距離 =====
-        const opponentTeam = getOpponentTeam(passer.team);
-
         let nearestOpponentDistance = Infinity;
         let totalOpponentDistance = 0;
 
