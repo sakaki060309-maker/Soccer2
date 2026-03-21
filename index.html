@@ -1434,8 +1434,8 @@ function updateBall() {
     visualBall.y = movingBall.y;
 
     // 減速
-    movingBall.speed *= 0.96;
-    movingBall.speed = Math.max(movingBall.speed, 1.2);
+    movingBall.speed *= 0.98;
+    movingBall.speed = Math.max(movingBall.speed, 1.5);
 
     const wasIntercepted = checkInterception();
     if (wasIntercepted) return;
