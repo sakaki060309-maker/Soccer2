@@ -2247,6 +2247,8 @@ function update() {
 // ======================================================
 // 25. Draw
 // ======================================================
+
+// 25.1 フィールド
 function drawField() {
     ctx.fillStyle = '#2e8b57';
     ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
@@ -2264,12 +2266,58 @@ function drawField() {
     ctx.stroke();
 }
 
+// 25.2 ゴール
 function drawGoals() {
     ctx.fillStyle = '#dddddd';
     ctx.fillRect(leftGoal.x, leftGoal.y, leftGoal.width, leftGoal.height);
     ctx.fillRect(rightGoal.x, rightGoal.y, rightGoal.width, rightGoal.height);
 }
 
+// 25.3 ボール保持者の前方コーン
+function drawBallHolderCone() {
+    const ballHolder = getBallHolder();
+    if (!ballHolder) return;
+
+    const attackGoal = getAttackingGoal(ballHolder.team);
+    const goalCenterX = attackGoal.x + attackGoal.width / 2;
+    const goalCenterY = attackGoal.y + attackGoal.height / 2;
+
+    const forwardAngle = Math.atan2(
+        goalCenterY - ballHolder.y,
+        goalCenterX - ballHolder.x
+    );
+
+    const coneHalfAngle = Math.PI / 6; // ±30度
+    const coneLength = 160;
+
+    const leftAngle = forwardAngle - coneHalfAngle;
+    const rightAngle = forwardAngle + coneHalfAngle;
+
+    const leftX = ballHolder.x + Math.cos(leftAngle) * coneLength;
+    const leftY = ballHolder.y + Math.sin(leftAngle) * coneLength;
+
+    const rightX = ballHolder.x + Math.cos(rightAngle) * coneLength;
+    const rightY = ballHolder.y + Math.sin(rightAngle) * coneLength;
+
+    ctx.beginPath();
+    ctx.moveTo(ballHolder.x, ballHolder.y);
+    ctx.lineTo(leftX, leftY);
+    ctx.lineTo(rightX, rightY);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.12)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(ballHolder.x, ballHolder.y);
+    ctx.lineTo(leftX, leftY);
+    ctx.lineTo(rightX, rightY);
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+// 25.4 選手
 function drawTeam(team) {
     for (const player of team) {
         ctx.beginPath();
@@ -2327,6 +2375,7 @@ function drawPlayers() {
     drawTeam(blueTeam);
 }
 
+// 25.5 ボール
 function drawBall() {
     const someoneHasBall = getBallHolder() !== null;
     if (!(movingBall.active || someoneHasBall)) return;
@@ -2338,6 +2387,7 @@ function drawBall() {
     ctx.closePath();
 }
 
+// 25.6 UI
 function drawUI() {
     ctx.fillStyle = 'white';
     ctx.font = 'bold 24px Arial';
@@ -2354,9 +2404,11 @@ function drawUI() {
     }
 }
 
+// 25.7 全体描画
 function draw() {
     drawField();
     drawGoals();
+    drawBallHolderCone();
     drawPlayers();
     drawBall();
     drawUI();
