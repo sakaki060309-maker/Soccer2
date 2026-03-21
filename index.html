@@ -735,142 +735,125 @@ function setWideTarget(player) {
 }
 
 // ======================================================
-// 10.2 run の移動先
-// run を選んだときに「どこへ走るか」を点数で決める
+// 10.2 run（前進＋中央侵入）
 // ======================================================
 function setRunTarget(player) {
     const opponentTeam = getOpponentTeam(player.team);
     const teammateTeam = getTeamByName(player.team);
 
-    // ==============================
-    // 候補地点を作る
-    // ・前
-    // ・左前
-    // ・右前
-    // ・少し前の左
-    // ・少し前の右
-    // ==============================
-    const forwardStep = RUN_FORWARD_DISTANCE;
-    const halfForwardStep = RUN_FORWARD_DISTANCE * 0.6;
-    const sideStep = 60;
+    const goal = getAttackingGoal(player.team);
+    const goalX = goal.x + goal.width / 2;
+    const goalY = goal.y + goal.height / 2;
+
+    // ==================================================
+    // 10.2.1 敵陣判定
+    // ==================================================
+    const isInAttackingHalf =
+        (player.team === 'red' && player.zoneX > FIELD_WIDTH / 2) ||
+        (player.team === 'blue' && player.zoneX < FIELD_WIDTH / 2);
+
+    // ==================================================
+    // 10.2.2 距離設定（敵陣なら拡張）
+    // ==================================================
+    const forward = RUN_FORWARD_DISTANCE;
+    const half = isInAttackingHalf ? forward * 0.8 : forward * 0.6;
+    const side = isInAttackingHalf ? 90 : 60;
 
     const forwardX = player.team === 'red'
-        ? player.zoneX + forwardStep
-        : player.zoneX - forwardStep;
+        ? player.zoneX + forward
+        : player.zoneX - forward;
 
-    const halfForwardX = player.team === 'red'
-        ? player.zoneX + halfForwardStep
-        : player.zoneX - halfForwardStep;
+    const halfX = player.team === 'red'
+        ? player.zoneX + half
+        : player.zoneX - half;
 
+    const centerY = FIELD_HEIGHT / 2;
+
+    // ==================================================
+    // 10.2.3 候補生成（中央侵入追加）
+    // ==================================================
     const candidates = [
-        { x: forwardX,     y: player.zoneY },                  // 真っすぐ前
-        { x: forwardX,     y: player.zoneY - sideStep },       // 左前
-        { x: forwardX,     y: player.zoneY + sideStep },       // 右前
-        { x: halfForwardX, y: player.zoneY - sideStep * 0.7 }, // 少し前の左
-        { x: halfForwardX, y: player.zoneY + sideStep * 0.7 }  // 少し前の右
+        // 前進
+        { x: forwardX, y: player.zoneY },
+        { x: forwardX, y: player.zoneY - side },
+        { x: forwardX, y: player.zoneY + side },
+
+        // 斜め前
+        { x: halfX, y: player.zoneY - side * 0.7 },
+        { x: halfX, y: player.zoneY + side * 0.7 },
+
+        // ★中央侵入（追加）
+        { x: forwardX, y: (player.zoneY + centerY) / 2 },
+        { x: halfX,    y: (player.zoneY + centerY) / 2 }
     ];
 
-    const attackGoal = getAttackingGoal(player.team);
-    const goalCenterX = attackGoal.x + attackGoal.width / 2;
-    const goalCenterY = attackGoal.y + attackGoal.height / 2;
-
-    let bestTarget = null;
+    let best = null;
     let bestScore = -Infinity;
 
+    // ==================================================
+    // 10.2.4 評価
+    // ==================================================
     for (const c of candidates) {
-        // フィールド外に出ないよう補正
-        const targetX = clamp(c.x, 30, FIELD_WIDTH - 30);
-        const targetY = clamp(c.y, 30, FIELD_HEIGHT - 30);
+        const tx = clamp(c.x, 30, FIELD_WIDTH - 30);
+        const ty = clamp(c.y, 30, FIELD_HEIGHT - 30);
 
-        // ==============================
-        // ① 一番近い敵との距離
-        // 近い敵がいないほど高得点
-        // ==============================
-        let nearestOpponentDistance = Infinity;
-        let totalOpponentDistance = 0;
-
-        for (const opponent of opponentTeam) {
-            const d = distanceBetweenPoints(targetX, targetY, opponent.x, opponent.y);
-            if (d < nearestOpponentDistance) nearestOpponentDistance = d;
-            totalOpponentDistance += d;
+        // 敵距離
+        let nearestOpp = Infinity;
+        let totalOpp = 0;
+        for (const o of opponentTeam) {
+            const d = distanceBetweenPoints(tx, ty, o.x, o.y);
+            if (d < nearestOpp) nearestOpp = d;
+            totalOpp += d;
         }
 
-        // ==============================
-        // ② 一番近い味方との距離
-        // 味方と近すぎる場所は被るので少し不利
-        // ==============================
-        let nearestMateDistance = Infinity;
-
-        for (const mate of teammateTeam) {
-            if (mate === player) continue;
-
-            const d = distanceBetweenPoints(targetX, targetY, mate.x, mate.y);
-            if (d < nearestMateDistance) nearestMateDistance = d;
+        // 味方距離
+        let nearestMate = Infinity;
+        for (const m of teammateTeam) {
+            if (m === player) continue;
+            const d = distanceBetweenPoints(tx, ty, m.x, m.y);
+            if (d < nearestMate) nearestMate = d;
         }
 
-        // ==============================
-        // ③ 前進量
-        // 今の位置よりどれだけ前に進めるか
-        // red は x増加、blue は x減少が前進
-        // ==============================
-        let rawForwardProgress = 0;
-        if (player.team === 'red') {
-            rawForwardProgress = targetX - player.x;
-        } else {
-            rawForwardProgress = player.x - targetX;
-        }
+        // 前進量
+        let forwardGain = player.team === 'red'
+            ? tx - player.x
+            : player.x - tx;
 
-        const forwardProgressScore = Math.max(0, rawForwardProgress) * 1.0;
+        // ゴール距離
+        const distToGoal = distanceBetweenPoints(tx, ty, goalX, goalY);
 
-        // ==============================
-        // ④ ゴール接近
-        // ゴールに近づく候補ほど少し高得点
-        // ==============================
-        const distanceToGoal = distanceBetweenPoints(
-            targetX, targetY,
-            goalCenterX, goalCenterY
-        );
+        // ==================================================
+        // 10.2.5 シュートエリアボーナス
+        // ==================================================
+        const inShotLaneY =
+            ty > FIELD_HEIGHT * 1 / 4 &&
+            ty < FIELD_HEIGHT * 3 / 4;
 
-        const goalClosenessScore = (FIELD_WIDTH - distanceToGoal) * 0.08;
+        const inShotLaneX =
+            (player.team === 'red' && tx > FIELD_WIDTH * 3 / 4) ||
+            (player.team === 'blue' && tx < FIELD_WIDTH * 1 / 4);
 
-        // ==============================
-        // ⑤ 味方とかぶらないボーナス
-        // 近すぎると窮屈なので、ある程度離れると加点
-        // ただし加点しすぎないよう上限をつける
-        // ==============================
-        const spacingScore = Math.min(nearestMateDistance, 120) * 0.7;
+        const shootingBonus = (inShotLaneX && inShotLaneY) ? 80 : 0;
 
-        // ==============================
-        // ⑥ 横に行きすぎる動きの抑制
-        // zoneY から離れすぎるとrunっぽくなくなるので少し減点
-        // ==============================
-        const sideMovePenalty = Math.abs(targetY - player.zoneY) * 0.08;
-
-        // ==============================
-        // 総合点
-        // ・敵から遠い
-        // ・周囲の敵全体も遠い
-        // ・前進している
-        // ・ゴールに近づく
-        // ・味方とかぶらない
-        // を高評価
-        // ==============================
+        // ==================================================
+        // 10.2.6 総合スコア
+        // ==================================================
         const score =
-            nearestOpponentDistance * 2.0 +
-            totalOpponentDistance * 0.03 +
-            forwardProgressScore +
-            goalClosenessScore +
-            spacingScore -
-            sideMovePenalty;
+            nearestOpp * 2.0 +
+            totalOpp * 0.03 +
+            Math.max(0, forwardGain) +
+            (FIELD_WIDTH - distToGoal) * 0.08 +
+            Math.min(nearestMate, 120) * 0.7 +
+            shootingBonus;
 
         if (score > bestScore) {
             bestScore = score;
-            bestTarget = { x: targetX, y: targetY };
+            best = { x: tx, y: ty };
         }
     }
 
-    player.targetX = bestTarget.x;
-    player.targetY = bestTarget.y;
+    player.targetX = best.x;
+    player.targetY = best.y;
 }
 // ======================================================
 // 10.3 off-ball 行動の点数計算
