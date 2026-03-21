@@ -121,14 +121,18 @@ const OFFBALL_ACTION_MIN_FRAMES = 30;
 const OFFBALL_ACTION_MAX_FRAMES = 45;
 
 // ======================================================
-// 7. Team creation (speed -20%)
+// 7. Team creation
+// red: 4-2-3-1
+// blue: 3-3-4
+// speed: 全体20%減
 // ======================================================
 function createRedTeam() {
     return [
+        // ===== 4バック =====
         {
             id: 1, team: 'red', label: '1', lineType: 'df',
-            x: 140, y: 350, targetX: 140, targetY: 350,
-            homeX: 140, homeY: 350, zoneX: 140, zoneY: 350,
+            x: 180, y: 110, targetX: 180, targetY: 110,
+            homeX: 180, homeY: 110, zoneX: 180, zoneY: 110,
             speed: 1.84, radius: 15, color: '#ff4b4b',
             hasBall: true, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
@@ -137,8 +141,8 @@ function createRedTeam() {
         },
         {
             id: 2, team: 'red', label: '2', lineType: 'df',
-            x: 220, y: 180, targetX: 220, targetY: 180,
-            homeX: 220, homeY: 180, zoneX: 220, zoneY: 180,
+            x: 180, y: 260, targetX: 180, targetY: 260,
+            homeX: 180, homeY: 260, zoneX: 180, zoneY: 260,
             speed: 1.76, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
@@ -147,29 +151,30 @@ function createRedTeam() {
         },
         {
             id: 3, team: 'red', label: '3', lineType: 'df',
-            x: 220, y: 520, targetX: 220, targetY: 520,
-            homeX: 220, homeY: 520, zoneX: 220, zoneY: 520,
+            x: 180, y: 440, targetX: 180, targetY: 440,
+            homeX: 180, homeY: 440, zoneX: 180, zoneY: 440,
             speed: 1.76, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
-
         {
-            id: 4, team: 'red', label: '4', lineType: 'mf',
-            x: 360, y: 140, targetX: 360, targetY: 140,
-            homeX: 360, homeY: 140, zoneX: 360, zoneY: 140,
-            speed: 1.92, radius: 15, color: '#ff4b4b',
+            id: 4, team: 'red', label: '4', lineType: 'df',
+            x: 180, y: 590, targetX: 180, targetY: 590,
+            homeX: 180, homeY: 590, zoneX: 180, zoneY: 590,
+            speed: 1.84, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
+
+        // ===== 2ボランチ =====
         {
             id: 5, team: 'red', label: '5', lineType: 'mf',
-            x: 360, y: 350, targetX: 360, targetY: 350,
-            homeX: 360, homeY: 350, zoneX: 360, zoneY: 350,
+            x: 340, y: 260, targetX: 340, targetY: 260,
+            homeX: 340, homeY: 260, zoneX: 340, zoneY: 260,
             speed: 1.92, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
@@ -178,8 +183,8 @@ function createRedTeam() {
         },
         {
             id: 6, team: 'red', label: '6', lineType: 'mf',
-            x: 360, y: 560, targetX: 360, targetY: 560,
-            homeX: 360, homeY: 560, zoneX: 360, zoneY: 560,
+            x: 340, y: 440, targetX: 340, targetY: 440,
+            homeX: 340, homeY: 440, zoneX: 340, zoneY: 440,
             speed: 1.92, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
@@ -187,10 +192,11 @@ function createRedTeam() {
             offBallAction: 'support', offBallActionTimer: 0
         },
 
+        // ===== 2列目の3人 =====
         {
-            id: 7, team: 'red', label: '7', lineType: 'fw',
-            x: 560, y: 120, targetX: 560, targetY: 120,
-            homeX: 560, homeY: 120, zoneX: 560, zoneY: 120,
+            id: 7, team: 'red', label: '7', lineType: 'mf',
+            x: 520, y: 140, targetX: 520, targetY: 140,
+            homeX: 520, homeY: 140, zoneX: 520, zoneY: 140,
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
@@ -198,9 +204,9 @@ function createRedTeam() {
             offBallAction: 'support', offBallActionTimer: 0
         },
         {
-            id: 8, team: 'red', label: '8', lineType: 'fw',
-            x: 560, y: 260, targetX: 560, targetY: 260,
-            homeX: 560, homeY: 260, zoneX: 560, zoneY: 260,
+            id: 8, team: 'red', label: '8', lineType: 'mf',
+            x: 520, y: 350, targetX: 520, targetY: 350,
+            homeX: 520, homeY: 350, zoneX: 520, zoneY: 350,
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
@@ -208,19 +214,21 @@ function createRedTeam() {
             offBallAction: 'support', offBallActionTimer: 0
         },
         {
-            id: 9, team: 'red', label: '9', lineType: 'fw',
-            x: 560, y: 440, targetX: 560, targetY: 440,
-            homeX: 560, homeY: 440, zoneX: 560, zoneY: 440,
+            id: 9, team: 'red', label: '9', lineType: 'mf',
+            x: 520, y: 560, targetX: 520, targetY: 560,
+            homeX: 520, homeY: 560, zoneX: 520, zoneY: 560,
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
+
+        // ===== 1トップ =====
         {
             id: 10, team: 'red', label: '10', lineType: 'fw',
-            x: 560, y: 580, targetX: 560, targetY: 580,
-            homeX: 560, homeY: 580, zoneX: 560, zoneY: 580,
+            x: 700, y: 350, targetX: 700, targetY: 350,
+            homeX: 700, homeY: 350, zoneX: 700, zoneY: 350,
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
