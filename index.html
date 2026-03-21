@@ -833,15 +833,22 @@ function chooseBestPassTarget(passer, team) {
     const passerForwardRank = sortedByForwardDepth.findIndex(p => p === passer) + 1;
     const passerIsTop3Forward = passerForwardRank <= 3;
 
+    // ===== 味方に敵陣の選手が1人でもいるか =====
+    const hasTeammateInAttackingHalf = team.some(player =>
+        (passer.team === 'red' && player.x > FIELD_WIDTH / 2) ||
+        (passer.team === 'blue' && player.x < FIELD_WIDTH / 2)
+    );
+
     for (const mate of team) {
         if (mate === passer) continue;
 
-        // ===== 自分が前線3人の1人なら、自陣にいる味方へのパスはしない =====
+        // ===== 前線3人ルール =====
+        // ただし、味方が全員自陣にいる時は発動させない
         const mateInOwnHalf =
             (passer.team === 'red' && mate.x < FIELD_WIDTH / 2) ||
             (passer.team === 'blue' && mate.x > FIELD_WIDTH / 2);
 
-        if (passerIsTop3Forward && mateInOwnHalf) {
+        if (passerIsTop3Forward && hasTeammateInAttackingHalf && mateInOwnHalf) {
             continue;
         }
 
