@@ -1168,11 +1168,17 @@ function updateDefendingTeam(team, ballHolder) {
             setPlayerAction(defender, 'cover');
 
         } else {
-            // zoneベースで守りつつ、少し中央を締める
+            // zoneを土台にしつつ、ボール側へ少し寄せ、さらに少し中央を締める
             const CENTER_Y = FIELD_HEIGHT / 2;
-            defender.targetX = defender.zoneX;
+
+            defender.targetX = clamp(
+                defender.zoneX * 0.7 + ballHolder.x * 0.3,
+                30,
+                FIELD_WIDTH - 30
+            );
+
             defender.targetY = clamp(
-                defender.zoneY * 0.7 + CENTER_Y * 0.3,
+                defender.zoneY * 0.6 + ballHolder.y * 0.2 + CENTER_Y * 0.2,
                 30,
                 FIELD_HEIGHT - 30
             );
