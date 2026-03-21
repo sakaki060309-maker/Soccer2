@@ -1038,11 +1038,217 @@ function updateRestart() {
 }
 
 // ======================================================
-// 18. Attacking team update
-// ★シュートは「奥1/4 かつ 中央1/2」のみ
-// ★敵陣ではドリブル寄りに調整
-// ★後ろ4枚かつ敵が近い時はドリブル禁止
-// ★パス・シュート時にボール初速をリセット
+// 18 攻撃AI
+// ======================================================
+
+// ======================================================
+// 18.1 状況チェック
+// ======================================================
+function analyzeBallHolderState(player, team) {
+    const opponentTeam = getOpponentTeam(player.team);
+
+    let nearestDefenderDistance = Infinity;
+    for (const opponent of opponentTeam) {
+        const dist = distanceBetweenPlayers(player, opponent);
+        if (dist < nearestDefenderDistance) nearestDefenderDistance = dist;
+    }
+
+    const sortedByBackDepth = [...team].sort((a, b) => {
+        if (player.team === 'red') return a.x - b.x;
+        else return b.x - a.x;
+    });
+
+    const backRank = sortedByBackDepth.findIndex(p => p === player) + 1;
+    const isBack4 = backRank <= 4;
+
+    const attackGoal = getAttackingGoal(player.team);
+    const goalCenterX = attackGoal.x + attackGoal.width / 2;
+    const goalCenterY = attackGoal.y + attackGoal.height / 2;
+
+    const distanceToGoal = distanceBetweenPoints(
+        player.x, player.y,
+        goalCenterX, goalCenterY
+    );
+
+    const isInOwnHalf =
+        (player.team === 'red' && player.x < FIELD_WIDTH / 2) ||
+        (player.team === 'blue' && player.x > FIELD_WIDTH / 2);
+
+    const isInAttackingHalf = !isInOwnHalf;
+
+    // シュート可能エリア（奥1/4 ＆ 中央1/2）
+    const isInShootingZone =
+        (
+            (player.team === 'red' && player.x > FIELD_WIDTH * 3 / 4) ||
+            (player.team === 'blue' && player.x < FIELD_WIDTH * 1 / 4)
+        ) &&
+        (
+            player.y > FIELD_HEIGHT * 1 / 4 &&
+            player.y < FIELD_HEIGHT * 3 / 4
+        );
+
+    const dribbleChoice = chooseDribbleTarget(player);
+
+    return {
+        nearestDefenderDistance,
+        isBack4,
+        distanceToGoal,
+        isInOwnHalf,
+        isInAttackingHalf,
+        isInShootingZone,
+        dribbleChoice
+    };
+}
+
+// ======================================================
+// 18.2 確率決定
+// ======================================================
+function getAttackingActionProbabilities(player, state) {
+    const {
+        nearestDefenderDistance,
+        isBack4,
+        distanceToGoal,
+        isInOwnHalf,
+        isInAttackingHalf,
+        isInShootingZone,
+        dribbleChoice
+    } = state;
+
+    let actionProbability = 0.02;
+    if (nearestDefenderDistance < 120) actionProbability = 0.03;
+    if (nearestDefenderDistance < 80) actionProbability = 0.05;
+    if (nearestDefenderDistance < 55) actionProbability = 0.08;
+    if (nearestDefenderDistance < 35) actionProbability = 0.25;
+
+    let passProbability = 0.35;
+    let shootProbability = 0.15;
+    let dribbleProbability = 0.50;
+
+    if (nearestDefenderDistance < 120) {
+        passProbability = 0.36;
+        shootProbability = 0.18;
+        dribbleProbability = 0.46;
+    }
+    if (nearestDefenderDistance < 80) {
+        passProbability = 0.38;
+        shootProbability = 0.14;
+        dribbleProbability = 0.48;
+    }
+    if (nearestDefenderDistance < 55) {
+        passProbability = 0.40;
+        shootProbability = 0.10;
+        dribbleProbability = 0.50;
+    }
+    if (nearestDefenderDistance < 35) {
+        passProbability = 0.42;
+        shootProbability = 0.06;
+        dribbleProbability = 0.52;
+    }
+
+    if (distanceToGoal < 180) {
+        shootProbability += 0.12;
+        passProbability -= 0.08;
+        dribbleProbability -= 0.04;
+    }
+    if (distanceToGoal < 120) {
+        shootProbability += 0.10;
+        passProbability -= 0.07;
+        dribbleProbability -= 0.03;
+    }
+
+    if (isInAttackingHalf) {
+        passProbability -= 0.12;
+        dribbleProbability += 0.12;
+    }
+
+    // ドリブル優先補正
+    if (
+        dribbleChoice &&
+        nearestDefenderDistance > 55 &&
+        !isBack4 &&
+        isInAttackingHalf
+    ) {
+        passProbability -= 0.15;
+        dribbleProbability += 0.15;
+    }
+
+    // シュート制限
+    if (!isInShootingZone) shootProbability = 0;
+
+    // 後ろ＋プレッシャー → ドリブル禁止
+    if (isBack4 && nearestDefenderDistance < 80) dribbleProbability = 0;
+
+    if (isInOwnHalf) shootProbability = 0;
+
+    passProbability = Math.max(0, passProbability);
+    shootProbability = Math.max(0, shootProbability);
+    dribbleProbability = Math.max(0, dribbleProbability);
+
+    const total = passProbability + shootProbability + dribbleProbability;
+
+    return {
+        actionProbability,
+        passProbability: passProbability / total,
+        shootProbability: shootProbability / total,
+        dribbleProbability: dribbleProbability / total
+    };
+}
+
+// ======================================================
+// 18.3 行動実行
+// ======================================================
+function executeAttackingAction(player, team, probs, state) {
+    const { passProbability, shootProbability } = probs;
+    const { dribbleChoice } = state;
+
+    const choice = Math.random();
+
+    if (choice < passProbability) {
+        const bestTarget = chooseBestPassTarget(player, team);
+
+        if (bestTarget) {
+            setPlayerAction(player, 'パス');
+            player.hasBall = false;
+
+            movingBall.active = true;
+            movingBall.x = visualBall.x;
+            movingBall.y = visualBall.y;
+            movingBall.sourceTeam = player.team;
+            movingBall.speed = 9;
+            movingBall.target = bestTarget;
+
+        } else if (dribbleChoice) {
+            tryDribbleDuel(player, dribbleChoice);
+        }
+
+    } else if (choice < passProbability + shootProbability) {
+        const attackGoal = getAttackingGoal(player.team);
+
+        setPlayerAction(player, 'シュート');
+        player.hasBall = false;
+
+        movingBall.active = true;
+        movingBall.x = visualBall.x;
+        movingBall.y = visualBall.y;
+        movingBall.sourceTeam = player.team;
+        movingBall.speed = 9;
+
+        movingBall.target = {
+            x: attackGoal.x + attackGoal.width / 2,
+            y: attackGoal.y + attackGoal.height / 2,
+            radius: 0,
+            isGoalPoint: true
+        };
+
+    } else {
+        if (dribbleChoice) {
+            tryDribbleDuel(player, dribbleChoice);
+        }
+    }
+}
+
+// ======================================================
+// 18.4 全体更新（メイン）
 // ======================================================
 function updateAttackingTeam(team) {
     const ballHolder = getBallHolder();
@@ -1056,8 +1262,10 @@ function updateAttackingTeam(team) {
             player.targetX = movingBall.x;
             player.targetY = movingBall.y;
             player.offBallActionTimer = 0;
+
         } else if (player.hasBall) {
             player.offBallActionTimer = 0;
+
         } else if (ballHolder) {
             if (player.offBallActionTimer <= 0) {
                 player.offBallAction = chooseOffBallAction(player, team);
@@ -1074,6 +1282,7 @@ function updateAttackingTeam(team) {
                 setRunTarget(player);
                 setPlayerAction(player, 'run');
             }
+
         } else {
             setTargetToZone(player);
             player.offBallActionTimer = 0;
@@ -1085,162 +1294,11 @@ function updateAttackingTeam(team) {
             visualBall.x = player.x + Math.cos(angle) * (player.radius + 6);
             visualBall.y = player.y + Math.sin(angle) * (player.radius + 6);
 
-            const opponentTeam = getOpponentTeam(player.team);
+            const state = analyzeBallHolderState(player, team);
+            const probs = getAttackingActionProbabilities(player, state);
 
-            let nearestDefenderDistance = Infinity;
-            for (const opponent of opponentTeam) {
-                const dist = distanceBetweenPlayers(player, opponent);
-                if (dist < nearestDefenderDistance) nearestDefenderDistance = dist;
-            }
-
-            // ===== 後ろから何番目か判定 =====
-            const sortedByBackDepth = [...team].sort((a, b) => {
-                if (player.team === 'red') {
-                    return a.x - b.x; // redはx小さいほど後ろ
-                } else {
-                    return b.x - a.x; // blueはx大きいほど後ろ
-                }
-            });
-
-            const backRank = sortedByBackDepth.findIndex(p => p === player) + 1;
-            const isBack4 = backRank <= 4;
-
-            // ===== ゴール距離 =====
-            const attackGoal = getAttackingGoal(player.team);
-            const goalCenterX = attackGoal.x + attackGoal.width / 2;
-            const goalCenterY = attackGoal.y + attackGoal.height / 2;
-            const distanceToGoal = distanceBetweenPoints(
-                player.x, player.y,
-                goalCenterX, goalCenterY
-            );
-
-            // ===== 自陣 / 敵陣判定 =====
-            const isInOwnHalf =
-                (player.team === 'red' && player.x < FIELD_WIDTH / 2) ||
-                (player.team === 'blue' && player.x > FIELD_WIDTH / 2);
-
-            const isInAttackingHalf = !isInOwnHalf;
-
-            // ===== シュート可能エリア判定 =====
-            // 奥1/4 かつ 中央1/2（サイド1/4除外）
-            const isInShootingZone =
-                (
-                    (player.team === 'red' && player.x > FIELD_WIDTH * 3 / 4) ||
-                    (player.team === 'blue' && player.x < FIELD_WIDTH * 1 / 4)
-                ) &&
-                (
-                    player.y > FIELD_HEIGHT * 1 / 4 &&
-                    player.y < FIELD_HEIGHT * 3 / 4
-                );
-
-            // ===== 行動発生確率 =====
-            let actionProbability = 0.02;
-            if (nearestDefenderDistance < 120) actionProbability = 0.03;
-            if (nearestDefenderDistance < 80) actionProbability = 0.05;
-            if (nearestDefenderDistance < 55) actionProbability = 0.08;
-            if (nearestDefenderDistance < 35) actionProbability = 0.25;
-
-            if (Math.random() < actionProbability) {
-                let passProbability = 0.35;
-                let shootProbability = 0.15;
-                let dribbleProbability = 0.50;
-
-                if (nearestDefenderDistance < 120) {
-                    passProbability = 0.36;
-                    shootProbability = 0.18;
-                    dribbleProbability = 0.46;
-                }
-                if (nearestDefenderDistance < 80) {
-                    passProbability = 0.38;
-                    shootProbability = 0.14;
-                    dribbleProbability = 0.48;
-                }
-                if (nearestDefenderDistance < 55) {
-                    passProbability = 0.40;
-                    shootProbability = 0.10;
-                    dribbleProbability = 0.50;
-                }
-                if (nearestDefenderDistance < 35) {
-                    passProbability = 0.42;
-                    shootProbability = 0.06;
-                    dribbleProbability = 0.52;
-                }
-
-                if (distanceToGoal < 180) {
-                    shootProbability += 0.12;
-                    passProbability -= 0.08;
-                    dribbleProbability -= 0.04;
-                }
-                if (distanceToGoal < 120) {
-                    shootProbability += 0.10;
-                    passProbability -= 0.07;
-                    dribbleProbability -= 0.03;
-                }
-
-                if (isInAttackingHalf) {
-                    passProbability -= 0.12;
-                    dribbleProbability += 0.12;
-                }
-
-                // ===== シュートは指定エリア内のみ =====
-                if (!isInShootingZone) {
-                    shootProbability = 0;
-                }
-
-                // ===== 後ろ4枚 かつ 敵が近い → ドリブル禁止 =====
-                if (isBack4 && nearestDefenderDistance < 80) {
-                    dribbleProbability = 0;
-                }
-
-                // ===== 正規化 =====
-                passProbability = Math.max(0, passProbability);
-                shootProbability = Math.max(0, shootProbability);
-                dribbleProbability = Math.max(0, dribbleProbability);
-
-                const total = passProbability + shootProbability + dribbleProbability;
-                passProbability /= total;
-                shootProbability /= total;
-                dribbleProbability /= total;
-
-                const choice = Math.random();
-
-                if (choice < passProbability) {
-                    const bestTarget = chooseBestPassTarget(player, team);
-
-                    if (bestTarget) {
-                        setPlayerAction(player, 'パス');
-                        player.hasBall = false;
-                        movingBall.active = true;
-                        movingBall.x = visualBall.x;
-                        movingBall.y = visualBall.y;
-                        movingBall.sourceTeam = player.team;
-                        movingBall.speed = 9;
-                        movingBall.target = bestTarget;
-                    } else {
-                        const dribbleChoice = chooseDribbleTarget(player);
-                        tryDribbleDuel(player, dribbleChoice);
-                    }
-
-                } else if (choice < passProbability + shootProbability) {
-                    setPlayerAction(player, 'シュート');
-                    player.hasBall = false;
-                    movingBall.active = true;
-                    movingBall.x = visualBall.x;
-                    movingBall.y = visualBall.y;
-                    movingBall.sourceTeam = player.team;
-                    movingBall.speed = 9;
-
-                    movingBall.target = {
-                        x: attackGoal.x + attackGoal.width / 2,
-                        y: attackGoal.y + attackGoal.height / 2,
-                        radius: 0,
-                        isGoalPoint: true
-                    };
-
-                } else {
-                    const dribbleChoice = chooseDribbleTarget(player);
-                    tryDribbleDuel(player, dribbleChoice);
-                }
+            if (Math.random() < probs.actionProbability) {
+                executeAttackingAction(player, team, probs, state);
             }
         }
     }
