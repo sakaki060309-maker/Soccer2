@@ -559,27 +559,141 @@ function setSupportTarget(player, ballHolder) {
 
 // ======================================================
 // 10.1 wide の移動先
-// 外側に開く動き
-// ・homeY を基準に、上の選手はさらに上へ
-// ・下の選手はさらに下へ
-// ・前後方向は zoneX を基準にする
+// wide を選んだときに「どこへ開くか」を点数で決める
 // ======================================================
 function setWideTarget(player) {
-    let targetY = player.homeY;
+    const opponentTeam = getOpponentTeam(player.team);
+    const teammateTeam = getTeamByName(player.team);
 
-    // もともと上側にいる選手ならさらに上へ
-    if (player.homeY < FIELD_HEIGHT / 2) {
-        targetY -= WIDE_OFFSET_Y;
-    } else {
-        // もともと下側にいる選手ならさらに下へ
-        targetY += WIDE_OFFSET_Y;
+    // =========================================
+    // 候補地点を作る
+    // ・外へ大きく開く
+    // ・少し外へ開く
+    // ・少し前に出ながら外へ開く
+    // =========================================
+    const bigSideStep = WIDE_OFFSET_Y;
+    const smallSideStep = WIDE_OFFSET_Y * 0.6;
+    const forwardStep = RUN_FORWARD_DISTANCE * 0.4;
+
+    const isUpperSide = player.homeY < FIELD_HEIGHT / 2;
+    const sideDirection = isUpperSide ? -1 : 1;
+
+    const forwardX = player.team === 'red'
+        ? player.zoneX + forwardStep
+        : player.zoneX - forwardStep;
+
+    const candidates = [
+        // 基本の大きいwide
+        { x: player.zoneX, y: player.homeY + sideDirection * bigSideStep },
+
+        // 少し控えめに開く
+        { x: player.zoneX, y: player.homeY + sideDirection * smallSideStep },
+
+        // 少し前に出ながら大きく開く
+        { x: forwardX, y: player.homeY + sideDirection * bigSideStep },
+
+        // 少し前に出ながら控えめに開く
+        { x: forwardX, y: player.homeY + sideDirection * smallSideStep }
+    ];
+
+    const attackGoal = getAttackingGoal(player.team);
+    const goalCenterX = attackGoal.x + attackGoal.width / 2;
+    const goalCenterY = attackGoal.y + attackGoal.height / 2;
+
+    let bestTarget = null;
+    let bestScore = -Infinity;
+
+    for (const c of candidates) {
+        // フィールド外に出ないよう補正
+        const targetX = clamp(c.x, 30, FIELD_WIDTH - 30);
+        const targetY = clamp(c.y, 30, FIELD_HEIGHT - 30);
+
+        // =========================================
+        // ① 一番近い敵との距離
+        // 近い敵がいないほど高得点
+        // =========================================
+        let nearestOpponentDistance = Infinity;
+        let totalOpponentDistance = 0;
+
+        for (const opponent of opponentTeam) {
+            const d = distanceBetweenPoints(targetX, targetY, opponent.x, opponent.y);
+            if (d < nearestOpponentDistance) nearestOpponentDistance = d;
+            totalOpponentDistance += d;
+        }
+
+        // =========================================
+        // ② 一番近い味方との距離
+        // 味方とかぶる場所は不利
+        // =========================================
+        let nearestMateDistance = Infinity;
+
+        for (const mate of teammateTeam) {
+            if (mate === player) continue;
+
+            const d = distanceBetweenPoints(targetX, targetY, mate.x, mate.y);
+            if (d < nearestMateDistance) nearestMateDistance = d;
+        }
+
+        // =========================================
+        // ③ 外側ボーナス
+        // 中央から離れるほど wide らしいので加点
+        // =========================================
+        const outernessScore = Math.abs(targetY - FIELD_HEIGHT / 2) * 0.35;
+
+        // =========================================
+        // ④ 少しだけ前進ボーナス
+        // wide でも前に出る価値はあるので少し加点
+        // =========================================
+        let rawForwardProgress = 0;
+        if (player.team === 'red') {
+            rawForwardProgress = targetX - player.x;
+        } else {
+            rawForwardProgress = player.x - targetX;
+        }
+
+        const forwardProgressScore = Math.max(0, rawForwardProgress) * 0.5;
+
+        // =========================================
+        // ⑤ ゴール接近ボーナス
+        // 少しだけゴール方向の価値を入れる
+        // =========================================
+        const distanceToGoal = distanceBetweenPoints(
+            targetX, targetY,
+            goalCenterX, goalCenterY
+        );
+        const goalClosenessScore = (FIELD_WIDTH - distanceToGoal) * 0.05;
+
+        // =========================================
+        // ⑥ zoneY から離れすぎるのはむしろwideなので減点しない
+        // ただし homeY から極端に離れすぎる候補は軽く抑える
+        // =========================================
+        const overWidePenalty = Math.abs(targetY - player.homeY) * 0.03;
+
+        // =========================================
+        // 総合点
+        // ・敵から遠い
+        // ・味方とかぶらない
+        // ・しっかり外に開ける
+        // ・少し前進できる
+        // を高評価
+        // =========================================
+        const score =
+            nearestOpponentDistance * 2.0 +
+            totalOpponentDistance * 0.03 +
+            Math.min(nearestMateDistance, 120) * 0.7 +
+            outernessScore +
+            forwardProgressScore +
+            goalClosenessScore -
+            overWidePenalty;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestTarget = { x: targetX, y: targetY };
+        }
     }
 
-    // 前後方向は今のチーム全体の基準位置(zoneX)を使う
-    player.targetX = player.zoneX;
-
-    // フィールド外に出ないように制限
-    player.targetY = clamp(targetY, 30, FIELD_HEIGHT - 30);
+    player.targetX = bestTarget.x;
+    player.targetY = bestTarget.y;
 }
 
 // ======================================================
