@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>10対10 サッカー風・自陣シュート禁止版</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            border: 3px solid #fff;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="1200" height="700"></canvas>
+
+<script>
+// ======================================================
+// 1. Canvas
+// ======================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const FIELD_WIDTH = canvas.width;
+const FIELD_HEIGHT = canvas.height;
+
+// ======================================================
+// 2. Goal
+// ======================================================
+const GOAL_HEIGHT = 150;
+const GOAL_WIDTH = 14;
+
+const leftGoal = {
+    x: 0,
+    y: (FIELD_HEIGHT - GOAL_HEIGHT) / 2,
+    width: GOAL_WIDTH,
+    height: GOAL_HEIGHT
+};
+
+const rightGoal = {
+    x: FIELD_WIDTH - GOAL_WIDTH,
+    y: (FIELD_HEIGHT - GOAL_HEIGHT) / 2,
+    width: GOAL_WIDTH,
+    height: GOAL_HEIGHT
+};
+
+// ======================================================
+// 3. Match state
+// ======================================================
+let scoreRed = 0;
+let scoreBlue = 0;
+
+let isRestarting = false;
+let restartTimer = 0;
+
+// ======================================================
+// 4. Ball state
+// ======================================================
+let visualBall = {
+    x: 0,
+    y: 0,
+    radius: 8,
+    color: 'white'
+};
+
+let movingBall = {
+    active: false,
+    x: 0,
+    y: 0,
+    target: null,
+    speed: 9,
+    sourceTeam: null
+};
+
+// ======================================================
+// 5. Teams
+// ======================================================
+let redTeam = [];
+let blueTeam = [];
+
+// ======================================================
+// 6. Tuning
+// ======================================================
+const STEAL_PROTECTION_FRAMES = 20;
+const INTERCEPT_DISTANCE = 18;
+const PRESS_DISTANCE = 45;
+const STEAL_DISTANCE = 20;
+const SUPPORT_OFFSET = 90;
+
+const SIDE_SLIDE_RATIO = 0.22;
+const DEFENSE_BACK_SHIFT = 10;
+
+// 攻撃時 effective home
+const DF_ATTACK_HOME_SHIFT = 100;
+const MF_FW_ATTACK_HOME_SHIFT = 200;
+
+const DRIBBLE_DISTANCE = 42;
+const DRIBBLE_SIDE_OFFSET = 24;
+const ACTION_LABEL_FRAMES = 30;
+
+const DRIBBLE_CHALLENGE_DISTANCE = 45;
+const DRIBBLE_INVINCIBLE_FRAMES = 20;
+const DRIBBLE_STUN_FRAMES = 18;
+
+const SUPPORT_SIDE_OPTION_OFFSET = 28;
+const PASS_LANE_DANGER_DISTANCE = 26;
+
+// 非保持者行動
+const WIDE_OFFSET_Y = 90;
+const RUN_FORWARD_DISTANCE = 90;
+
+// 非保持者行動維持時間
+const OFFBALL_ACTION_MIN_FRAMES = 30;
+const OFFBALL_ACTION_MAX_FRAMES = 45;
+
+// ======================================================
+// 7. Team creation
+// ======================================================
+function createRedTeam() {
+    return [
+        {
+            id: 1, team: 'red', label: '1', lineType: 'df',
+            x: 140, y: 350, targetX: 140, targetY: 350,
+            homeX: 140, homeY: 350, zoneX: 140, zoneY: 350,
+            speed: 2.3, radius: 15, color: '#ff4b4b',
+            hasBall: true, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 2, team: 'red', label: '2', lineType: 'df',
+            x: 220, y: 180, targetX: 220, targetY: 180,
+            homeX: 220, homeY: 180, zoneX: 220, zoneY: 180,
+            speed: 2.2, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 3, team: 'red', label: '3', lineType: 'df',
+            x: 220, y: 520, targetX: 220, targetY: 520,
+            homeX: 220, homeY: 520, zoneX: 220, zoneY: 520,
+            speed: 2.2, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+
+        {
+            id: 4, team: 'red', label: '4', lineType: 'mf',
+            x: 360, y: 140, targetX: 360, targetY: 140,
+            homeX: 360, homeY: 140, zoneX: 360, zoneY: 140,
+            speed: 2.4, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 5, team: 'red', label: '5', lineType: 'mf',
+            x: 360, y: 350, targetX: 360, targetY: 350,
+            homeX: 360, homeY: 350, zoneX: 360, zoneY: 350,
+            speed: 2.4, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 6, team: 'red', label: '6', lineType: 'mf',
+            x: 360, y: 560, targetX: 360, targetY: 560,
+            homeX: 360, homeY: 560, zoneX: 360, zoneY: 560,
+            speed: 2.4, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+
+        {
+            id: 7, team: 'red', label: '7', lineType: 'fw',
+            x: 560, y: 120, targetX: 560, targetY: 120,
+            homeX: 560, homeY: 120, zoneX: 560, zoneY: 120,
+            speed: 2.6, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 8, team: 'red', label: '8', lineType: 'fw',
+            x: 560, y: 260, targetX: 560, targetY: 260,
+            homeX: 560, homeY: 260, zoneX: 560, zoneY: 260,
+            speed: 2.6, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 9, team: 'red', label: '9', lineType: 'fw',
+            x: 560, y: 440, targetX: 560, targetY: 440,
+            homeX: 560, homeY: 440, zoneX: 560, zoneY: 440,
+            speed: 2.6, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 10, team: 'red', label: '10', lineType: 'fw',
+            x: 560, y: 580, targetX: 560, targetY: 580,
+            homeX: 560, homeY: 580, zoneX: 560, zoneY: 580,
+            speed: 2.6, radius: 15, color: '#ff4b4b',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        }
+    ];
+}
+
+function createBlueTeam() {
+    return [
+        {
+            id: 101, team: 'blue', label: 'A', lineType: 'df',
+            x: 1060, y: 350, targetX: 1060, targetY: 350,
+            homeX: 1060, homeY: 350, zoneX: 1060, zoneY: 350,
+            speed: 2.3, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 102, team: 'blue', label: 'B', lineType: 'df',
+            x: 980, y: 180, targetX: 980, targetY: 180,
+            homeX: 980, homeY: 180, zoneX: 980, zoneY: 180,
+            speed: 2.2, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 103, team: 'blue', label: 'C', lineType: 'df',
+            x: 980, y: 520, targetX: 980, targetY: 520,
+            homeX: 980, homeY: 520, zoneX: 980, zoneY: 520,
+            speed: 2.2, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+
+        {
+            id: 104, team: 'blue', label: 'D', lineType: 'mf',
+            x: 840, y: 140, targetX: 840, targetY: 140,
+            homeX: 840, homeY: 140, zoneX: 840, zoneY: 140,
+            speed: 2.4, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 105, team: 'blue', label: 'E', lineType: 'mf',
+            x: 840, y: 350, targetX: 840, targetY: 350,
+            homeX: 840, homeY: 350, zoneX: 840, zoneY: 350,
+            speed: 2.4, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 106, team: 'blue', label: 'F', lineType: 'mf',
+            x: 840, y: 560, targetX: 840, targetY: 560,
+            homeX: 840, homeY: 560, zoneX: 840, zoneY: 560,
+            speed: 2.4, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+
+        {
+            id: 107, team: 'blue', label: 'G', lineType: 'fw',
+            x: 640, y: 120, targetX: 640, targetY: 120,
+            homeX: 640, homeY: 120, zoneX: 640, zoneY: 120,
+            speed: 2.6, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 108, team: 'blue', label: 'H', lineType: 'fw',
+            x: 640, y: 260, targetX: 640, targetY: 260,
+            homeX: 640, homeY: 260, zoneX: 640, zoneY: 260,
+            speed: 2.6, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 109, team: 'blue', label: 'I', lineType: 'fw',
+            x: 640, y: 440, targetX: 640, targetY: 440,
+            homeX: 640, homeY: 440, zoneX: 640, zoneY: 440,
+            speed: 2.6, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        },
+        {
+            id: 110, team: 'blue', label: 'J', lineType: 'fw',
+            x: 640, y: 580, targetX: 640, targetY: 580,
+            homeX: 640, homeY: 580, zoneX: 640, zoneY: 580,
+            speed: 2.6, radius: 15, color: '#4b7bff',
+            hasBall: false, stealProtectionTimer: 0,
+            actionText: '', actionTimer: 0,
+            stunTimer: 0, dribbleInvincibleTimer: 0,
+            offBallAction: 'support', offBallActionTimer: 0
+        }
+    ];
+}
+
+// ======================================================
+// 8. Utility
+// ======================================================
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function getAllPlayers() {
+    return [...redTeam, ...blueTeam];
+}
+
+function getBallHolder() {
+    for (const player of getAllPlayers()) {
+        if (player.hasBall) return player;
+    }
+    return null;
+}
+
+function getTeamByName(teamName) {
+    return teamName === 'red' ? redTeam : blueTeam;
+}
+
+function getOpponentTeam(teamName) {
+    return teamName === 'red' ? blueTeam : redTeam;
+}
+
+function getAttackingGoal(teamName) {
+    return teamName === 'red' ? rightGoal : leftGoal;
+}
+
+function pointInGoal(ball, goal) {
+    return (
+        ball.x + ball.radius > goal.x &&
+        ball.x - ball.radius < goal.x + goal.width &&
+        ball.y + ball.radius > goal.y &&
+        ball.y - ball.radius < goal.y + goal.height
+    );
+}
+
+function distanceBetweenPoints(x1, y1, x2, y2) {
+    const dx = x1 - x2;
+    const dy = y1 - y2;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function distanceBetweenPlayers(a, b) {
+    return distanceBetweenPoints(a.x, a.y, b.x, b.y);
+}
+
+function clearBallPossession() {
+    for (const player of getAllPlayers()) {
+        player.hasBall = false;
+    }
+}
+
+function updateStealProtectionTimers() {
+    for (const player of getAllPlayers()) {
+        if (player.stealProtectionTimer > 0) player.stealProtectionTimer--;
+    }
+}
+
+function updateActionTimers() {
+    for (const player of getAllPlayers()) {
+        if (player.actionTimer > 0) {
+            player.actionTimer--;
+            if (player.actionTimer <= 0) {
+                player.actionTimer = 0;
+                player.actionText = '';
+            }
+        }
+    }
+}
+
+function updateStatusTimers() {
+    for (const player of getAllPlayers()) {
+        if (player.stunTimer > 0) player.stunTimer--;
+        if (player.dribbleInvincibleTimer > 0) player.dribbleInvincibleTimer--;
+    }
+}
+
+function updateOffBallActionTimers() {
+    for (const player of getAllPlayers()) {
+        if (player.offBallActionTimer > 0) {
+            player.offBallActionTimer--;
+        }
+    }
+}
+
+function getRandomOffBallDuration() {
+    return Math.floor(
+        Math.random() * (OFFBALL_ACTION_MAX_FRAMES - OFFBALL_ACTION_MIN_FRAMES + 1)
+    ) + OFFBALL_ACTION_MIN_FRAMES;
+}
+
+function setPlayerAction(player, text) {
+    player.actionText = text;
+    player.actionTimer = ACTION_LABEL_FRAMES;
+}
+
+function movePlayerTowardCurrentTarget(player) {
+    const dx = player.targetX - player.x;
+    const dy = player.targetY - player.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+
+    if (distance >= player.speed) {
+        player.x += Math.cos(angle) * player.speed;
+        player.y += Math.sin(angle) * player.speed;
+    }
+
+    return angle;
+}
+
+function setTargetToZone(player) {
+    player.targetX = player.zoneX;
+    player.targetY = player.zoneY;
+}
+
+// ======================================================
+// 9. Support target
+// ======================================================
+function chooseBestSupportTarget(player, ballHolder) {
+    const opponentTeam = getOpponentTeam(player.team);
+
+    const toBallX = ballHolder.x - player.zoneX;
+    const toBallY = ballHolder.y - player.zoneY;
+    const distance = Math.sqrt(toBallX * toBallX + toBallY * toBallY);
+
+    let baseX = player.zoneX;
+    let baseY = player.zoneY;
+
+    if (distance > 0) {
+        const scale = Math.min(SUPPORT_OFFSET, distance) / distance;
+        baseX = player.zoneX + toBallX * scale;
+        baseY = player.zoneY + toBallY * scale;
+    }
+
+    const candidates = [
+        { x: baseX, y: baseY },
+        { x: baseX, y: baseY - SUPPORT_SIDE_OPTION_OFFSET },
+        { x: baseX, y: baseY + SUPPORT_SIDE_OPTION_OFFSET }
+    ];
+
+    let bestCandidate = null;
+    let bestScore = -Infinity;
+
+    for (const candidate of candidates) {
+        const targetX = clamp(candidate.x, 30, FIELD_WIDTH - 30);
+        const targetY = clamp(candidate.y, 30, FIELD_HEIGHT - 30);
+
+        let nearestOpponentDistance = Infinity;
+        let totalOpponentDistance = 0;
+
+        for (const opponent of opponentTeam) {
+            const d = distanceBetweenPoints(targetX, targetY, opponent.x, opponent.y);
+            if (d < nearestOpponentDistance) nearestOpponentDistance = d;
+            totalOpponentDistance += d;
+        }
+
+        const score = nearestOpponentDistance * 2 + totalOpponentDistance * 0.03;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestCandidate = { x: targetX, y: targetY };
+        }
+    }
+
+    return bestCandidate;
+}
+
+function setSupportTarget(player, ballHolder) {
+    const bestTarget = chooseBestSupportTarget(player, ballHolder);
+    player.targetX = bestTarget.x;
+    player.targetY = bestTarget.y;
+}
+
+// ======================================================
+// 10. Off-ball actions
+// ======================================================
+function setWideTarget(player) {
+    let targetY = player.homeY;
+
+    if (player.homeY < FIELD_HEIGHT / 2) {
+        targetY -= WIDE_OFFSET_Y;
+    } else {
+        targetY += WIDE_OFFSET_Y;
+    }
+
+    player.targetX = player.zoneX;
+    player.targetY = clamp(targetY, 30, FIELD_HEIGHT - 30);
+}
+
+function setRunTarget(player) {
+    let targetX;
+
+    if (player.team === 'red') {
+        targetX = player.zoneX + RUN_FORWARD_DISTANCE;
+    } else {
+        targetX = player.zoneX - RUN_FORWARD_DISTANCE;
+    }
+
+    player.targetX = clamp(targetX, 30, FIELD_WIDTH - 30);
+    player.targetY = player.zoneY;
+}
+
+function chooseOffBallAction(player) {
+    let supportWeight = 1;
+    let wideWeight = 1;
+    let runWeight = 1;
+
+    if (player.lineType === 'df') {
+        supportWeight = 5;
+        wideWeight = 2;
+        runWeight = 1;
+    } else if (player.lineType === 'mf') {
+        supportWeight = 4;
+        wideWeight = 3;
+        runWeight = 2;
+    } else if (player.lineType === 'fw') {
+        supportWeight = 2;
+        wideWeight = 2;
+        runWeight = 5;
+    }
+
+    const total = supportWeight + wideWeight + runWeight;
+    const r = Math.random() * total;
+
+    if (r < supportWeight) return 'support';
+    if (r < supportWeight + wideWeight) return 'wide';
+    return 'run';
+}
+
+// ======================================================
+// 11. Closest player
+// ======================================================
+function getClosestPlayerToTarget(team, targetPlayer) {
+    let closest = null;
+    let closestDistance = Infinity;
+
+    for (const player of team) {
+        const dist = distanceBetweenPlayers(player, targetPlayer);
+        if (dist < closestDistance) {
+            closestDistance = dist;
+            closest = player;
+        }
+    }
+
+    return closest;
+}
+
+// ======================================================
+// 12. Dribble target
+// ======================================================
+function chooseDribbleTarget(player) {
+    const opponentTeam = getOpponentTeam(player.team);
+
+    const forwardX = player.team === 'red'
+        ? player.x + DRIBBLE_DISTANCE
+        : player.x - DRIBBLE_DISTANCE;
+
+    const candidateTargets = [
+        { x: forwardX, y: player.y, label: 'ドリブル→' },
+        { x: forwardX, y: player.y - DRIBBLE_SIDE_OFFSET, label: 'ドリブル↗' },
+        { x: forwardX, y: player.y + DRIBBLE_SIDE_OFFSET, label: 'ドリブル↘' }
+    ];
+
+    // ゴール方向のレーンが空いているか判定する補助関数
+    function isGoalLaneOpen(targetX, targetY) {
+        for (const opponent of opponentTeam) {
+            const forwardGap = player.team === 'red'
+                ? opponent.x - targetX
+                : targetX - opponent.x;
+
+            const sideGap = Math.abs(opponent.y - targetY);
+
+            // 前方に近く、かつ同じ縦レーン付近に敵がいれば塞がれている
+            if (forwardGap > 0 && forwardGap < 140 && sideGap < 45) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    let bestCandidate = null;
+    let bestScore = -Infinity;
+
+    for (const candidate of candidateTargets) {
+        const targetX = clamp(candidate.x, 30, FIELD_WIDTH - 30);
+        const targetY = clamp(candidate.y, 30, FIELD_HEIGHT - 30);
+
+        let nearestOpponentDistance = Infinity;
+        let totalOpponentDistance = 0;
+
+        for (const opponent of opponentTeam) {
+            const d = distanceBetweenPoints(targetX, targetY, opponent.x, opponent.y);
+            if (d < nearestOpponentDistance) nearestOpponentDistance = d;
+            totalOpponentDistance += d;
+        }
+
+        // ゴール方向のレーンが空いていたら大きく加点
+        let goalLaneBonus = 0;
+        if (isGoalLaneOpen(targetX, targetY)) {
+            goalLaneBonus = 120;
+        }
+
+        const score =
+            nearestOpponentDistance * 2 +
+            totalOpponentDistance * 0.05 +
+            goalLaneBonus;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestCandidate = { x: targetX, y: targetY, label: candidate.label };
+        }
+    }
+
+    return bestCandidate;
+}
+// ======================================================
+// 13. Dribble duel
+// ======================================================
+function getClosestAvailableDefender(team, attacker) {
+    let closest = null;
+    let closestDistance = Infinity;
+
+    for (const defender of team) {
+        if (defender.stunTimer > 0) continue;
+        const dist = distanceBetweenPlayers(defender, attacker);
+        if (dist < closestDistance) {
+            closestDistance = dist;
+            closest = defender;
+        }
+    }
+
+    return { defender: closest, distance: closestDistance };
+}
+
+function getDribbleSuccessProbability(distance) {
+    if (distance < 15) return 0.55;
+    if (distance < 25) return 0.65;
+    if (distance < 35) return 0.75;
+    if (distance < 45) return 0.85;
+    return 0.92;
+}
+
+function tryDribbleDuel(attacker, chosenDribble) {
+    const opponentTeam = getOpponentTeam(attacker.team);
+    const { defender, distance } = getClosestAvailableDefender(opponentTeam, attacker);
+
+    if (!defender || distance > DRIBBLE_CHALLENGE_DISTANCE) {
+        setPlayerAction(attacker, chosenDribble.label);
+        attacker.targetX = chosenDribble.x;
+        attacker.targetY = chosenDribble.y;
+        return;
+    }
+
+    const successProbability = getDribbleSuccessProbability(distance);
+
+    if (Math.random() < successProbability) {
+        attacker.dribbleInvincibleTimer = DRIBBLE_INVINCIBLE_FRAMES;
+        defender.stunTimer = DRIBBLE_STUN_FRAMES;
+        setPlayerAction(attacker, chosenDribble.label + '成功');
+        attacker.targetX = chosenDribble.x;
+        attacker.targetY = chosenDribble.y;
+    } else {
+        clearBallPossession();
+        movingBall.active = false;
+        movingBall.target = null;
+        movingBall.sourceTeam = null;
+
+        defender.hasBall = true;
+        defender.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
+        setPlayerAction(attacker, 'ドリブル失敗');
+        setPlayerAction(defender, '奪取');
+
+        visualBall.x = defender.x;
+        visualBall.y = defender.y;
+    }
+}
+
+// ======================================================
+// 14. Pass lane
+// ======================================================
+function distancePointToSegment(px, py, ax, ay, bx, by) {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const abLenSq = abx * abx + aby * aby;
+    if (abLenSq === 0) {
+        return distanceBetweenPoints(px, py, ax, ay);
+    }
+
+    let t = (apx * abx + apy * aby) / abLenSq;
+    t = clamp(t, 0, 1);
+
+    const closestX = ax + abx * t;
+    const closestY = ay + aby * t;
+
+    return distanceBetweenPoints(px, py, closestX, closestY);
+}
+
+function getPassLanePenalty(passer, receiver, opponents) {
+    let penalty = 0;
+
+    for (const opponent of opponents) {
+        if (opponent.stunTimer > 0) continue;
+
+        const laneDistance = distancePointToSegment(
+            opponent.x, opponent.y,
+            passer.x, passer.y,
+            receiver.x, receiver.y
+        );
+
+        if (laneDistance < PASS_LANE_DANGER_DISTANCE) {
+            penalty += (PASS_LANE_DANGER_DISTANCE - laneDistance) * 4;
+        }
+    }
+
+    return penalty;
+}
+
+// ======================================================
+// 15. Pass target
+// ======================================================
+function chooseBestPassTarget(passer, team) {
+    let bestTarget = null;
+    let bestScore = -Infinity;
+
+    for (const mate of team) {
+        if (mate === passer) continue;
+
+        // ===== 距離 =====
+        const dx = mate.x - passer.x;
+        const dy = mate.y - passer.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // ===== 距離スコア =====
+        let distanceScore = 0;
+        if (distance < 50) distanceScore = -30;
+        else if (distance < 120) distanceScore = 60;
+        else if (distance < 200) distanceScore = 20;
+        else distanceScore = -20;
+
+        // ===== 敵との距離 =====
+        const opponentTeam = getOpponentTeam(passer.team);
+
+        let nearestOpponentDistance = Infinity;
+        let totalOpponentDistance = 0;
+
+        for (const opponent of opponentTeam) {
+            const d = distanceBetweenPlayers(mate, opponent);
+            totalOpponentDistance += d;
+            if (d < nearestOpponentDistance) nearestOpponentDistance = d;
+        }
+
+        // ===== パスコース妨害 =====
+        const passLanePenalty = getPassLanePenalty(passer, mate, opponentTeam);
+
+        // ===== 前進量（正なら前、負なら後ろ） =====
+        let rawForwardProgress = 0;
+
+        if (passer.team === 'red') {
+            rawForwardProgress = mate.x - passer.x;
+        } else {
+            rawForwardProgress = passer.x - mate.x;
+        }
+
+        // ===== 前進ボーナス =====
+        const forwardProgress = Math.max(0, rawForwardProgress);
+        const forwardProgressScore = forwardProgress * 0.8;
+
+        // ===== ゴール接近ボーナス =====
+        const attackGoal = getAttackingGoal(passer.team);
+        const goalCenterX = attackGoal.x + attackGoal.width / 2;
+        const goalCenterY = attackGoal.y + attackGoal.height / 2;
+
+        const mateDistanceToGoal = distanceBetweenPoints(
+            mate.x, mate.y,
+            goalCenterX, goalCenterY
+        );
+
+        const goalClosenessScore = (FIELD_WIDTH - mateDistanceToGoal) * 0.1;
+
+        // ===== 敵陣判定 =====
+        const passerInAttackingHalf =
+            (passer.team === 'red' && passer.x > FIELD_WIDTH / 2) ||
+            (passer.team === 'blue' && passer.x < FIELD_WIDTH / 2);
+
+        // ===== 敵陣 × 戻り量で減点 =====
+        let backwardPassPenalty = 0;
+
+        if (passerInAttackingHalf) {
+            if (rawForwardProgress < -120) {
+                // 大きく戻すバックパス
+                backwardPassPenalty = 400;
+            } else if (rawForwardProgress < -60) {
+                // 中くらい戻すバックパス
+                backwardPassPenalty = 300;
+            } else if (rawForwardProgress < -20) {
+                // 少し戻すバックパス
+                backwardPassPenalty = 70;
+            } else if (rawForwardProgress < 20) {
+                // ほぼ横パス
+                backwardPassPenalty = 5;
+            }
+        }
+
+        // ===== 総合スコア =====
+        const score =
+            nearestOpponentDistance * 2 +
+            totalOpponentDistance * 0.02 +
+            distanceScore +
+            forwardProgressScore +
+            goalClosenessScore -
+            passLanePenalty -
+            backwardPassPenalty;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestTarget = mate;
+        }
+    }
+
+    return bestTarget;
+}
+// ======================================================
+// 16. Zones with effective home
+// ======================================================
+function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceBallY) {
+    const ballOffsetFromCenterX = referenceBallX - FIELD_WIDTH / 2;
+    const sideShift = ballOffsetFromCenterX * SIDE_SLIDE_RATIO;
+
+    for (const player of team) {
+        let effectiveHomeX = player.homeX;
+        let effectiveHomeY = player.homeY;
+
+        if (isAttacking) {
+            let attackShift = 0;
+
+            if (player.lineType === 'df') {
+                attackShift = DF_ATTACK_HOME_SHIFT;
+            } else if (player.lineType === 'mf' || player.lineType === 'fw') {
+                attackShift = MF_FW_ATTACK_HOME_SHIFT;
+            }
+
+            effectiveHomeX += teamName === 'red' ? attackShift : -attackShift;
+        } else {
+            effectiveHomeX += teamName === 'red' ? -DEFENSE_BACK_SHIFT : DEFENSE_BACK_SHIFT;
+        }
+
+        const shiftedX = effectiveHomeX + sideShift;
+        const shiftedY = effectiveHomeY;
+
+        player.zoneX = clamp(shiftedX, 30, FIELD_WIDTH - 30);
+        player.zoneY = clamp(shiftedY, 30, FIELD_HEIGHT - 30);
+    }
+}
+
+// ======================================================
+// 17. Reset
+// ======================================================
+function resetGame() {
+    redTeam = createRedTeam();
+    blueTeam = createBlueTeam();
+
+    movingBall.active = false;
+    movingBall.x = 0;
+    movingBall.y = 0;
+    movingBall.target = null;
+    movingBall.sourceTeam = null;
+
+    visualBall.x = redTeam[0].x;
+    visualBall.y = redTeam[0].y;
+}
+
+function startRestart(scoringTeam) {
+    isRestarting = true;
+    restartTimer = 90;
+
+    if (scoringTeam === 'red') scoreRed++;
+    else if (scoringTeam === 'blue') scoreBlue++;
+}
+
+function updateRestart() {
+    if (!isRestarting) return;
+    restartTimer--;
+    if (restartTimer <= 0) {
+        isRestarting = false;
+        resetGame();
+    }
+}
+
+// ======================================================
+// 18. Attacking team update
+// ★自陣ではシュート禁止
+// ======================================================
+function updateAttackingTeam(team) {
+    const ballHolder = getBallHolder();
+
+    for (const player of team) {
+        if (player.stunTimer > 0) continue;
+
+        const isCurrentReceiver = movingBall.active && movingBall.target === player;
+
+        if (isCurrentReceiver) {
+            player.targetX = movingBall.x;
+            player.targetY = movingBall.y;
+            player.offBallActionTimer = 0;
+        } else if (player.hasBall) {
+            player.offBallActionTimer = 0;
+        } else if (ballHolder) {
+            if (player.offBallActionTimer <= 0) {
+                player.offBallAction = chooseOffBallAction(player);
+                player.offBallActionTimer = getRandomOffBallDuration();
+            }
+
+            if (player.offBallAction === 'support') {
+                setSupportTarget(player, ballHolder);
+                setPlayerAction(player, 'support');
+            } else if (player.offBallAction === 'wide') {
+                setWideTarget(player);
+                setPlayerAction(player, 'wide');
+            } else if (player.offBallAction === 'run') {
+                setRunTarget(player);
+                setPlayerAction(player, 'run');
+            }
+        } else {
+            setTargetToZone(player);
+            player.offBallActionTimer = 0;
+        }
+
+        const angle = movePlayerTowardCurrentTarget(player);
+
+        if (player.hasBall) {
+            visualBall.x = player.x + Math.cos(angle) * (player.radius + 6);
+            visualBall.y = player.y + Math.sin(angle) * (player.radius + 6);
+
+            const opponentTeam = getOpponentTeam(player.team);
+
+            let nearestDefenderDistance = Infinity;
+            for (const opponent of opponentTeam) {
+                const dist = distanceBetweenPlayers(player, opponent);
+                if (dist < nearestDefenderDistance) nearestDefenderDistance = dist;
+            }
+
+            const attackGoal = getAttackingGoal(player.team);
+            const goalCenterX = attackGoal.x + attackGoal.width / 2;
+            const goalCenterY = attackGoal.y + attackGoal.height / 2;
+            const distanceToGoal = distanceBetweenPoints(player.x, player.y, goalCenterX, goalCenterY);
+
+            // ★自陣判定
+            const isInOwnHalf =
+                (player.team === 'red' && player.x < FIELD_WIDTH / 2) ||
+                (player.team === 'blue' && player.x > FIELD_WIDTH / 2);
+
+            let actionProbability = 0.02;
+            if (nearestDefenderDistance < 120) actionProbability = 0.03;
+            if (nearestDefenderDistance < 80) actionProbability = 0.05;
+            if (nearestDefenderDistance < 55) actionProbability = 0.08;
+            if (nearestDefenderDistance < 35) actionProbability = 0.12;
+
+            if (Math.random() < actionProbability) {
+                let passProbability = 0.35;
+                let shootProbability = 0.15;
+                let dribbleProbability = 0.50;
+
+                if (nearestDefenderDistance < 120) {
+                    passProbability = 0.42;
+                    shootProbability = 0.18;
+                    dribbleProbability = 0.40;
+                }
+                if (nearestDefenderDistance < 80) {
+                    passProbability = 0.48;
+                    shootProbability = 0.14;
+                    dribbleProbability = 0.38;
+                }
+                if (nearestDefenderDistance < 55) {
+                    passProbability = 0.56;
+                    shootProbability = 0.10;
+                    dribbleProbability = 0.34;
+                }
+                if (nearestDefenderDistance < 35) {
+                    passProbability = 0.64;
+                    shootProbability = 0.06;
+                    dribbleProbability = 0.30;
+                }
+
+                if (distanceToGoal < 180) {
+                    shootProbability += 0.12;
+                    passProbability -= 0.06;
+                    dribbleProbability -= 0.06;
+                }
+                if (distanceToGoal < 120) {
+                    shootProbability += 0.10;
+                    passProbability -= 0.05;
+                    dribbleProbability -= 0.05;
+                }
+
+                // ★ここで自陣シュート禁止
+                if (isInOwnHalf) {
+                    shootProbability = 0;
+                }
+
+                const total = passProbability + shootProbability + dribbleProbability;
+                passProbability /= total;
+                shootProbability /= total;
+                dribbleProbability /= total;
+
+                const choice = Math.random();
+
+                if (choice < passProbability) {
+                    setPlayerAction(player, 'パス');
+                    player.hasBall = false;
+                    movingBall.active = true;
+                    movingBall.x = visualBall.x;
+                    movingBall.y = visualBall.y;
+                    movingBall.sourceTeam = player.team;
+
+                    const bestTarget = chooseBestPassTarget(player, team);
+                    movingBall.target = bestTarget;
+                } else if (choice < passProbability + shootProbability) {
+                    setPlayerAction(player, 'シュート');
+                    player.hasBall = false;
+                    movingBall.active = true;
+                    movingBall.x = visualBall.x;
+                    movingBall.y = visualBall.y;
+                    movingBall.sourceTeam = player.team;
+
+                    movingBall.target = {
+                        x: attackGoal.x + attackGoal.width / 2,
+                        y: attackGoal.y + attackGoal.height / 2,
+                        radius: 0,
+                        isGoalPoint: true
+                    };
+                } else {
+                    const dribbleChoice = chooseDribbleTarget(player);
+                    tryDribbleDuel(player, dribbleChoice);
+                }
+            }
+        }
+    }
+}
+
+// ======================================================
+// 19. Defending team update
+// ======================================================
+function updateDefendingTeam(team, ballHolder) {
+    if (!ballHolder) {
+        for (const defender of team) {
+            if (defender.stunTimer > 0) continue;
+            setTargetToZone(defender);
+            movePlayerTowardCurrentTarget(defender);
+        }
+        return;
+    }
+
+    const availableDefenders = team.filter(p => p.stunTimer <= 0);
+    const pressingDefender = availableDefenders.length > 0
+        ? getClosestPlayerToTarget(availableDefenders, ballHolder)
+        : null;
+
+    for (const defender of team) {
+        if (defender.stunTimer > 0) continue;
+
+        if (defender === pressingDefender) {
+            const dx = ballHolder.x - defender.x;
+            const dy = ballHolder.y - defender.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            const canStealCurrentHolder =
+                ballHolder.stealProtectionTimer <= 0 &&
+                ballHolder.dribbleInvincibleTimer <= 0;
+
+            if (canStealCurrentHolder && distance <= STEAL_DISTANCE) {
+                clearBallPossession();
+
+                movingBall.active = false;
+                movingBall.target = null;
+                movingBall.sourceTeam = null;
+
+                defender.hasBall = true;
+                defender.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
+
+                visualBall.x = defender.x;
+                visualBall.y = defender.y;
+                setPlayerAction(defender, '奪取');
+                return;
+            }
+
+            if (distance > PRESS_DISTANCE) {
+                defender.targetX = ballHolder.x;
+                defender.targetY = ballHolder.y;
+            }
+        } else {
+            setTargetToZone(defender);
+        }
+
+        movePlayerTowardCurrentTarget(defender);
+    }
+}
+
+// ======================================================
+// 20. Player update controller
+// ======================================================
+function updatePlayers() {
+    const ballHolder = getBallHolder();
+
+    const referenceBallX = movingBall.active ? movingBall.x : visualBall.x;
+    const referenceBallY = movingBall.active ? movingBall.y : visualBall.y;
+
+    if (ballHolder) {
+        const attackingTeam = getTeamByName(ballHolder.team);
+        const defendingTeam = getOpponentTeam(ballHolder.team);
+
+        updateTeamZones(attackingTeam, ballHolder.team, true, referenceBallX, referenceBallY);
+        updateTeamZones(defendingTeam, defendingTeam[0].team, false, referenceBallX, referenceBallY);
+
+        updateAttackingTeam(attackingTeam);
+        updateDefendingTeam(defendingTeam, ballHolder);
+    } else {
+        if (movingBall.active && movingBall.sourceTeam) {
+            const attackingTeam = getTeamByName(movingBall.sourceTeam);
+            const defendingTeam = getOpponentTeam(movingBall.sourceTeam);
+
+            updateTeamZones(attackingTeam, movingBall.sourceTeam, true, referenceBallX, referenceBallY);
+            updateTeamZones(defendingTeam, defendingTeam[0].team, false, referenceBallX, referenceBallY);
+        } else {
+            updateTeamZones(redTeam, 'red', false, referenceBallX, referenceBallY);
+            updateTeamZones(blueTeam, 'blue', false, referenceBallX, referenceBallY);
+        }
+
+        for (const player of redTeam) {
+            if (player.stunTimer > 0) continue;
+            if (movingBall.active && movingBall.target === player) {
+                player.targetX = movingBall.x;
+                player.targetY = movingBall.y;
+            } else {
+                setTargetToZone(player);
+            }
+            movePlayerTowardCurrentTarget(player);
+        }
+
+        for (const player of blueTeam) {
+            if (player.stunTimer > 0) continue;
+            setTargetToZone(player);
+            movePlayerTowardCurrentTarget(player);
+        }
+    }
+}
+
+// ======================================================
+// 21. Interception
+// ======================================================
+function checkInterception() {
+    if (!movingBall.active || !movingBall.sourceTeam) return false;
+
+    const interceptingTeam = getOpponentTeam(movingBall.sourceTeam);
+
+    for (const player of interceptingTeam) {
+        if (player.stunTimer > 0) continue;
+
+        const distanceToBall = distanceBetweenPoints(player.x, player.y, movingBall.x, movingBall.y);
+
+        if (distanceToBall <= INTERCEPT_DISTANCE) {
+            clearBallPossession();
+
+            movingBall.active = false;
+            movingBall.target = null;
+            movingBall.sourceTeam = null;
+
+            player.hasBall = true;
+            player.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
+            setPlayerAction(player, 'インターセプト');
+
+            visualBall.x = player.x;
+            visualBall.y = player.y;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ======================================================
+// 22. Ball update
+// ======================================================
+function updateBall() {
+    if (!movingBall.active) return;
+
+    const dx = movingBall.target.x - movingBall.x;
+    const dy = movingBall.target.y - movingBall.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+
+    movingBall.x += Math.cos(angle) * movingBall.speed;
+    movingBall.y += Math.sin(angle) * movingBall.speed;
+    visualBall.x = movingBall.x;
+    visualBall.y = movingBall.y;
+
+    const wasIntercepted = checkInterception();
+    if (wasIntercepted) return;
+
+    const allPlayers = getAllPlayers();
+    const isRealPlayer = allPlayers.includes(movingBall.target);
+
+    if (isRealPlayer && distance < movingBall.target.radius + 10) {
+        movingBall.active = false;
+        movingBall.target.hasBall = true;
+        movingBall.target.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
+        movingBall.sourceTeam = null;
+        setPlayerAction(movingBall.target, '受ける');
+    }
+
+    if (
+        movingBall.x < -20 || movingBall.x > FIELD_WIDTH + 20 ||
+        movingBall.y < -20 || movingBall.y > FIELD_HEIGHT + 20
+    ) {
+        movingBall.active = false;
+        movingBall.target = null;
+        movingBall.sourceTeam = null;
+        resetGame();
+    }
+}
+
+// ======================================================
+// 23. Goal check
+// ======================================================
+function checkGoal() {
+    if (!movingBall.active) return;
+
+    if (pointInGoal(visualBall, rightGoal)) {
+        movingBall.active = false;
+        movingBall.target = null;
+        movingBall.sourceTeam = null;
+        startRestart('red');
+        return;
+    }
+
+    if (pointInGoal(visualBall, leftGoal)) {
+        movingBall.active = false;
+        movingBall.target = null;
+        movingBall.sourceTeam = null;
+        startRestart('blue');
+        return;
+    }
+}
+
+// ======================================================
+// 24. Update
+// ======================================================
+function update() {
+    if (isRestarting) {
+        updateRestart();
+        return;
+    }
+
+    updateStealProtectionTimers();
+    updateActionTimers();
+    updateStatusTimers();
+    updateOffBallActionTimers();
+    updatePlayers();
+    updateBall();
+    checkGoal();
+}
+
+// ======================================================
+// 25. Draw
+// ======================================================
+function drawField() {
+    ctx.fillStyle = '#2e8b57';
+    ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(FIELD_WIDTH / 2, 0);
+    ctx.lineTo(FIELD_WIDTH / 2, FIELD_HEIGHT);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(FIELD_WIDTH / 2, FIELD_HEIGHT / 2, 70, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function drawGoals() {
+    ctx.fillStyle = '#dddddd';
+    ctx.fillRect(leftGoal.x, leftGoal.y, leftGoal.width, leftGoal.height);
+    ctx.fillRect(rightGoal.x, rightGoal.y, rightGoal.width, rightGoal.height);
+}
+
+function drawTeam(team) {
+    for (const player of team) {
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = player.color;
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(player.label, player.x, player.y);
+
+        if (player.actionText && player.actionTimer > 0) {
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 11px Arial';
+            ctx.fillText(player.actionText, player.x, player.y - 28);
+        }
+
+        if (player.stealProtectionTimer > 0) {
+            ctx.fillStyle = 'yellow';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText('P', player.x, player.y - 16);
+        }
+
+        if (player.dribbleInvincibleTimer > 0) {
+            ctx.fillStyle = '#00ffff';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText('INV', player.x, player.y - 40);
+        }
+
+        if (player.stunTimer > 0) {
+            ctx.fillStyle = '#ffcc00';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText('STUN', player.x, player.y - 52);
+        }
+
+        ctx.beginPath();
+        ctx.arc(player.homeX, player.homeY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.beginPath();
+        ctx.arc(player.zoneX, player.zoneY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,0,0.24)';
+        ctx.fill();
+        ctx.closePath();
+    }
+}
+
+function drawPlayers() {
+    drawTeam(redTeam);
+    drawTeam(blueTeam);
+}
+
+function drawBall() {
+    const someoneHasBall = getBallHolder() !== null;
+    if (!(movingBall.active || someoneHasBall)) return;
+
+    ctx.beginPath();
+    ctx.arc(visualBall.x, visualBall.y, visualBall.radius, 0, Math.PI * 2);
+    ctx.fillStyle = visualBall.color;
+    ctx.fill();
+    ctx.closePath();
+}
+
+function drawUI() {
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${scoreRed} - ${scoreBlue}`, FIELD_WIDTH / 2, 32);
+
+    if (isRestarting) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+
+        ctx.fillStyle = 'yellow';
+        ctx.font = 'bold 34px Arial';
+        ctx.fillText('GOAL!', FIELD_WIDTH / 2, FIELD_HEIGHT / 2);
+    }
+}
+
+function draw() {
+    drawField();
+    drawGoals();
+    drawPlayers();
+    drawBall();
+    drawUI();
+}
+
+// ======================================================
+// 26. Main loop
+// ======================================================
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+resetGame();
+loop();
+</script>
+
+</body>
+</html>
