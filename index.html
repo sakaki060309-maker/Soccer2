@@ -1160,13 +1160,22 @@ function updateDefendingTeam(team, ballHolder) {
             }
 
             setPlayerAction(defender, 'press');
+
         } else if (defender === coverDefender) {
             const coverPos = getCoverPosition(defender.team, ballHolder);
             defender.targetX = coverPos.x;
             defender.targetY = coverPos.y;
             setPlayerAction(defender, 'cover');
+
         } else {
-            setTargetToZone(defender);
+            // zoneベースで守りつつ、少し中央を締める
+            const CENTER_Y = FIELD_HEIGHT / 2;
+            defender.targetX = defender.zoneX;
+            defender.targetY = clamp(
+                defender.zoneY * 0.7 + CENTER_Y * 0.3,
+                30,
+                FIELD_HEIGHT - 30
+            );
         }
 
         movePlayerTowardCurrentTarget(defender);
