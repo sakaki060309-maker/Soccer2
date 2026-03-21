@@ -2247,6 +2247,7 @@ function checkGoal() {
 
 // ======================================================
 // 24. Update
+// passScoreText を残す版
 // ======================================================
 function update() {
     if (isRestarting) {
@@ -2254,7 +2255,7 @@ function update() {
         return;
     }
 
-    clearPassScoreTexts();
+    // clearPassScoreTexts(); // 常時表示確認用にいったん無効化
     updateStealProtectionTimers();
     updateActionTimers();
     updateStatusTimers();
