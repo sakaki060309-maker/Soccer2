@@ -455,6 +455,22 @@ function setTargetToZone(player) {
     player.targetY = player.zoneY;
 }
 
+function getCoverPosition(defenderTeamName, ballHolder) {
+    const COVER_OFFSET_X = 50;
+
+    let coverX;
+    if (defenderTeamName === 'red') {
+        coverX = ballHolder.x - COVER_OFFSET_X;
+    } else {
+        coverX = ballHolder.x + COVER_OFFSET_X;
+    }
+
+    return {
+        x: clamp(coverX, 30, FIELD_WIDTH - 30),
+        y: clamp(ballHolder.y, 30, FIELD_HEIGHT - 30)
+    };
+}
+
 // ======================================================
 // 9. Support target
 // ======================================================
