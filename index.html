@@ -886,7 +886,7 @@ function chooseBestPassTarget(passer, team) {
         if (distance < 50) distanceScore = -30;
         else if (distance < 120) distanceScore = 60;
         else if (distance < 200) distanceScore = 20;
-        else distanceScore = -20;
+        else distanceScore = -100;
 
         // ===== 敵との距離 =====
         const opponentTeam = getOpponentTeam(passer.team);
