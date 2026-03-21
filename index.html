@@ -569,15 +569,15 @@ function setRunTarget(player) {
     player.targetY = player.zoneY;
 }
 
-function chooseOffBallAction(player) {
+function chooseOffBallAction(player, team) {
     let supportWeight = 1;
     let wideWeight = 1;
     let runWeight = 1;
 
     if (player.lineType === 'df') {
-        supportWeight = 5;
-        wideWeight = 2;
-        runWeight = 1;
+        supportWeight = 1;
+        wideWeight = 4;
+        runWeight = 3;
     } else if (player.lineType === 'mf') {
         supportWeight = 4;
         wideWeight = 3;
@@ -586,6 +586,26 @@ function chooseOffBallAction(player) {
         supportWeight = 2;
         wideWeight = 2;
         runWeight = 5;
+    }
+
+    // ===== チーム内で一番外側か判定 =====
+    let isOuterMost = true;
+
+    for (const mate of team) {
+        if (mate === player) continue;
+
+        const mateOuter = Math.abs(mate.y - FIELD_HEIGHT / 2);
+        const playerOuter = Math.abs(player.y - FIELD_HEIGHT / 2);
+
+        if (mateOuter > playerOuter) {
+            isOuterMost = false;
+            break;
+        }
+    }
+
+    // ===== 外側ならwide強化 =====
+    if (isOuterMost) {
+        wideWeight += 3;
     }
 
     const total = supportWeight + wideWeight + runWeight;
@@ -1035,7 +1055,7 @@ function updateAttackingTeam(team) {
             player.offBallActionTimer = 0;
         } else if (ballHolder) {
             if (player.offBallActionTimer <= 0) {
-                player.offBallAction = chooseOffBallAction(player);
+                player.offBallAction = chooseOffBallAction(player, team);
                 player.offBallActionTimer = getRandomOffBallDuration();
             }
 
