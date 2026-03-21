@@ -1210,7 +1210,7 @@ function tryDribbleDuel(attacker, chosenDribble) {
 
 
 // ======================================================
-// 14. Pass lane
+// 14. Pass lane（自陣での危険度強化版）
 // ======================================================
 function distancePointToSegment(px, py, ax, ay, bx, by) {
     const abx = bx - ax;
@@ -1246,16 +1246,23 @@ function getPassLanePenalty(passer, receiver, opponents) {
 
     if (abLenSq === 0) return 0;
 
+    // ==================================================
+    // 14.1 自陣判定
+    // ==================================================
+    const passerInOwnHalf =
+        (passer.team === 'red' && passer.x < FIELD_WIDTH / 2) ||
+        (passer.team === 'blue' && passer.x > FIELD_WIDTH / 2);
+
     for (const opponent of opponents) {
         if (opponent.stunTimer > 0) continue;
 
         const apx = opponent.x - ax;
         const apy = opponent.y - ay;
 
-        // 敵がパス線分のどの位置にいるか
+        // 線分上の位置
         const rawT = (apx * abx + apy * aby) / abLenSq;
 
-        // パサーより後ろ、または受け手より先は基本無視
+        // 範囲外は無視
         if (rawT < 0 || rawT > 1) continue;
 
         const laneDistance = distancePointToSegment(
@@ -1267,16 +1274,29 @@ function getPassLanePenalty(passer, receiver, opponents) {
         if (laneDistance < PASS_LANE_DANGER_DISTANCE) {
             let positionWeight = 1.0;
 
-            // 中間地点は強め
+            // ==================================================
+            // 14.2 中央にいる敵は危険
+            // ==================================================
             if (rawT > 0.15 && rawT < 0.85) positionWeight = 1.4;
             if (rawT > 0.30 && rawT < 0.70) positionWeight = 1.8;
 
-            // パサー近くの敵も強め
+            // ==================================================
+            // 14.3 パサー近くの敵（自陣は強化）
+            // ==================================================
             const distToPasser = distanceBetweenPoints(opponent.x, opponent.y, ax, ay);
 
-            if (distToPasser < 60) positionWeight += 0.8;
-            if (distToPasser < 40) positionWeight += 1.0;
+            // 通常
+            if (distToPasser < 60) positionWeight += passerInOwnHalf ? 1.2 : 0.8;
+            if (distToPasser < 40) positionWeight += passerInOwnHalf ? 1.4 : 1.0;
 
+            // 自陣だけさらに広く警戒
+            if (passerInOwnHalf && distToPasser < 80) {
+                positionWeight += 0.6;
+            }
+
+            // ==================================================
+            // 14.4 減点計算
+            // ==================================================
             const closeness = PASS_LANE_DANGER_DISTANCE - laneDistance;
             penalty += closeness * 6 * positionWeight;
         }
