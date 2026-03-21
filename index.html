@@ -553,77 +553,201 @@ function setSupportTarget(player, ballHolder) {
 
 // ======================================================
 // 10. Off-ball actions
+// 「ボールを持っていない攻撃側選手」が
+// support / wide / run のどれをするか決める処理
+// ======================================================
+
+// ======================================================
+// 10.1 wide の移動先
+// 外側に開く動き
+// ・homeY を基準に、上の選手はさらに上へ
+// ・下の選手はさらに下へ
+// ・前後方向は zoneX を基準にする
 // ======================================================
 function setWideTarget(player) {
     let targetY = player.homeY;
 
+    // もともと上側にいる選手ならさらに上へ
     if (player.homeY < FIELD_HEIGHT / 2) {
         targetY -= WIDE_OFFSET_Y;
     } else {
+        // もともと下側にいる選手ならさらに下へ
         targetY += WIDE_OFFSET_Y;
     }
 
+    // 前後方向は今のチーム全体の基準位置(zoneX)を使う
     player.targetX = player.zoneX;
+
+    // フィールド外に出ないように制限
     player.targetY = clamp(targetY, 30, FIELD_HEIGHT - 30);
 }
 
+// ======================================================
+// 10.2 run の移動先
+// 前方向へ走る動き
+// ・red は右方向へ
+// ・blue は左方向へ
+// ・今は単純に zoneX から一定距離だけ前に出る
+// ======================================================
 function setRunTarget(player) {
     let targetX;
 
     if (player.team === 'red') {
+        // redは右へ攻めるので x を増やす
         targetX = player.zoneX + RUN_FORWARD_DISTANCE;
     } else {
+        // blueは左へ攻めるので x を減らす
         targetX = player.zoneX - RUN_FORWARD_DISTANCE;
     }
 
+    // フィールド外に出ないように制限
     player.targetX = clamp(targetX, 30, FIELD_WIDTH - 30);
+
+    // 縦方向は今のチーム全体の基準位置(zoneY)を維持
     player.targetY = player.zoneY;
 }
 
-function chooseOffBallAction(player, team) {
-    let supportWeight = 1;
-    let wideWeight = 1;
-    let runWeight = 1;
+// ======================================================
+// 10.3 off-ball 行動の点数計算
+// support / wide / run それぞれに点数をつける
+// 最終的に「一番点数が高い行動」を選ぶ
+// ======================================================
+function evaluateOffBall(player, team, ballHolder) {
+    // 最低点を1ずつ持たせておく
+    // （0スタートでもいいけど、少しだけ保険をかけてる）
+    let supportScore = 1;
+    let wideScore = 1;
+    let runScore = 1;
 
+    // ==================================================
+    // ① ポジションごとの基本傾向
+    // DF / MF / FW で「やりやすい役割」を最初に補正
+    // ==================================================
     if (player.lineType === 'df') {
-        supportWeight = 1;
-        wideWeight = 4;
-        runWeight = 3;
+        // DFは受けに来すぎず、幅を取る or 少し前に出る寄り
+        supportScore += 1;
+        wideScore += 4;
+        runScore += 3;
     } else if (player.lineType === 'mf') {
-        supportWeight = 4;
-        wideWeight = 3;
-        runWeight = 2;
+        // MFは受け役が多め
+        supportScore += 4;
+        wideScore += 3;
+        runScore += 2;
     } else if (player.lineType === 'fw') {
-        supportWeight = 2;
-        wideWeight = 2;
-        runWeight = 5;
+        // FWは前へ走る役割が強い
+        supportScore += 2;
+        wideScore += 2;
+        runScore += 5;
     }
 
-    // ===== チーム内で一番外側か判定 =====
+    // ==================================================
+    // ② チーム内で一番外側にいるか
+    // ・画面中央(FIELD_HEIGHT/2)からの距離が一番大きい選手
+    // ・外側なら wide をしやすくする
+    // ==================================================
     let isOuterMost = true;
 
     for (const mate of team) {
         if (mate === player) continue;
 
+        // 中心線からどれだけ離れているか
         const mateOuter = Math.abs(mate.y - FIELD_HEIGHT / 2);
         const playerOuter = Math.abs(player.y - FIELD_HEIGHT / 2);
 
+        // 自分よりもっと外にいる味方がいたら、一番外側ではない
         if (mateOuter > playerOuter) {
             isOuterMost = false;
             break;
         }
     }
 
-    // ===== 外側ならwide強化 =====
     if (isOuterMost) {
-        wideWeight += 3;
+        // 一番外の選手は幅を取る価値が高い
+        wideScore += 3;
     }
 
-    const total = supportWeight + wideWeight + runWeight;
-    const r = Math.random() * total;
+    // ==================================================
+    // ③ ボール保持者との距離
+    // ・近いなら受けに行く(support)価値が高い
+    // ・遠いなら前へ走る(run)価値が高い
+    // ==================================================
+    const dx = player.x - ballHolder.x;
+    const dy = player.y - ballHolder.y;
+    const distToBallHolder = Math.sqrt(dx * dx + dy * dy);
 
-    if (r < supportWeight) return 'support';
-    if (r < supportWeight + wideWeight) return 'wide';
+    if (distToBallHolder < 150) {
+        // 近いならサポートしやすい
+        supportScore += 2;
+    } else {
+        // 遠いなら前に走って受ける価値がある
+        runScore += 2;
+    }
+
+    // ==================================================
+    // ④ ボール保持者より前にいるか
+    // ・前にいる選手は run の価値を少し上げる
+    // ・「裏へ走る」「前で受ける」意識を少し足している
+    // ==================================================
+    if (player.team === 'red') {
+        // redは右に攻めるので x が大きいほど前
+        if (player.x > ballHolder.x) {
+            runScore += 2;
+        }
+    } else {
+        // blueは左に攻めるので x が小さいほど前
+        if (player.x < ballHolder.x) {
+            runScore += 2;
+        }
+    }
+
+    // ==================================================
+    // ⑤ ボール保持者との縦方向のズレ
+    // ・y が近すぎると同じレーンで被りやすい
+    // ・少し離れていた方が wide の価値が上がる
+    // ==================================================
+    const sideGap = Math.abs(player.y - ballHolder.y);
+
+    if (sideGap < 60) {
+        // ボール保持者と同じ縦ラインに近すぎるなら、
+        // 少し外へ逃げる価値を上げる
+        wideScore += 2;
+    }
+
+    // 計算結果を返す
+    return {
+        supportScore,
+        wideScore,
+        runScore
+    };
+}
+
+// ======================================================
+// 10.4 どの off-ball 行動を選ぶか
+// 点数を比較して、一番高い行動を返す
+// ・supportScore が最大なら support
+// ・wideScore が最大なら wide
+// ・それ以外は run
+// ======================================================
+function chooseOffBallAction(player, team) {
+    const ballHolder = getBallHolder();
+
+    // 念のため、ボール保持者がいなければ support を返す
+    // （実際には updateAttackingTeam 側で ballHolder がいる時しか
+    // ここを呼ばない想定だけど、保険として入れている）
+    if (!ballHolder) return 'support';
+
+    const { supportScore, wideScore, runScore } =
+        evaluateOffBall(player, team, ballHolder);
+
+    // 点数が一番高いものを採用
+    if (supportScore >= wideScore && supportScore >= runScore) {
+        return 'support';
+    }
+
+    if (wideScore >= supportScore && wideScore >= runScore) {
+        return 'wide';
+    }
+
     return 'run';
 }
 
