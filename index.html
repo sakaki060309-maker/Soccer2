@@ -1751,7 +1751,9 @@ function updateAttackingTeam(team) {
     }
 }
 // ======================================================
-// 19. Defending team update
+// 19. 守備AI
+// press / cover / zoneスライド
+// 自陣で相手が持った時は zone担当も少し強めに寄せる
 // ======================================================
 function updateDefendingTeam(team, ballHolder) {
     if (!ballHolder) {
@@ -1765,18 +1767,24 @@ function updateDefendingTeam(team, ballHolder) {
 
     const availableDefenders = team.filter(p => p.stunTimer <= 0);
 
+    // 19.1 press役
     const pressingDefender = availableDefenders.length > 0
         ? getClosestPlayerToTarget(availableDefenders, ballHolder)
         : null;
 
+    // 19.2 cover役
     const coverCandidates = availableDefenders.filter(p => p !== pressingDefender);
     const coverDefender = coverCandidates.length > 0
         ? getClosestPlayerToTarget(coverCandidates, ballHolder)
         : null;
 
+    // 19.3 全体更新
     for (const defender of team) {
         if (defender.stunTimer > 0) continue;
 
+        // -----------------------------
+        // 19.3.1 press
+        // -----------------------------
         if (defender === pressingDefender) {
             const dx = ballHolder.x - defender.x;
             const dy = ballHolder.y - defender.y;
@@ -1808,28 +1816,62 @@ function updateDefendingTeam(team, ballHolder) {
             }
 
             setPlayerAction(defender, 'press');
+        }
 
-        } else if (defender === coverDefender) {
+        // -----------------------------
+        // 19.3.2 cover
+        // -----------------------------
+        else if (defender === coverDefender) {
             const coverPos = getCoverPosition(defender.team, ballHolder);
             defender.targetX = coverPos.x;
             defender.targetY = coverPos.y;
             setPlayerAction(defender, 'cover');
+        }
 
-        } else {
-            // zoneを土台にしつつ、ボール側へ少し寄せ、さらに少し中央を締める
+        // -----------------------------
+        // 19.3.3 zoneスライド
+        // -----------------------------
+        else {
             const CENTER_Y = FIELD_HEIGHT / 2;
 
-            defender.targetX = clamp(
-                defender.zoneX * 0.7 + ballHolder.x * 0.3,
-                30,
-                FIELD_WIDTH - 30
-            );
+            // 守備側から見て自陣で相手が持っているか
+            const opponentInDefendingHalf =
+                (defender.team === 'red' && ballHolder.x < FIELD_WIDTH / 2) ||
+                (defender.team === 'blue' && ballHolder.x > FIELD_WIDTH / 2);
 
-            defender.targetY = clamp(
-                defender.zoneY * 0.6 + ballHolder.y * 0.2 + CENTER_Y * 0.2,
-                30,
-                FIELD_HEIGHT - 30
-            );
+            let targetX;
+            let targetY;
+
+            if (opponentInDefendingHalf) {
+                // 自陣では少し強めにボール側へ寄せる
+                targetX = clamp(
+                    defender.zoneX * 0.5 + ballHolder.x * 0.5,
+                    30,
+                    FIELD_WIDTH - 30
+                );
+
+                targetY = clamp(
+                    defender.zoneY * 0.45 + ballHolder.y * 0.35 + CENTER_Y * 0.20,
+                    30,
+                    FIELD_HEIGHT - 30
+                );
+            } else {
+                // それ以外は通常スライド
+                targetX = clamp(
+                    defender.zoneX * 0.7 + ballHolder.x * 0.3,
+                    30,
+                    FIELD_WIDTH - 30
+                );
+
+                targetY = clamp(
+                    defender.zoneY * 0.6 + ballHolder.y * 0.2 + CENTER_Y * 0.2,
+                    30,
+                    FIELD_HEIGHT - 30
+                );
+            }
+
+            defender.targetX = targetX;
+            defender.targetY = targetY;
         }
 
         movePlayerTowardCurrentTarget(defender);
