@@ -120,6 +120,9 @@ const RUN_FORWARD_DISTANCE = 90;
 const OFFBALL_ACTION_MIN_FRAMES = 30;
 const OFFBALL_ACTION_MAX_FRAMES = 45;
 
+// インターセプトスタン
+const INTERCEPT_FAIL_STUN_FRAMES = 12;
+
 // ======================================================
 // 7. Team creation
 // red: 4-2-3-1
@@ -1409,20 +1412,37 @@ function checkInterception() {
         );
 
         if (distanceToBall <= effectiveInterceptDistance) {
-            clearBallPossession();
+            // ボールが速いほど成功率を下げる
+            let interceptSuccessProbability = 0.95;
 
-            movingBall.active = false;
-            movingBall.target = null;
-            movingBall.sourceTeam = null;
+            if (movingBall.speed > 8) {
+                interceptSuccessProbability = 0.35;
+            } else if (movingBall.speed > 6) {
+                interceptSuccessProbability = 0.55;
+            } else if (movingBall.speed > 4) {
+                interceptSuccessProbability = 0.75;
+            }
 
-            player.hasBall = true;
-            player.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
-            setPlayerAction(player, 'インターセプト');
+            if (Math.random() < interceptSuccessProbability) {
+                clearBallPossession();
 
-            visualBall.x = player.x;
-            visualBall.y = player.y;
+                movingBall.active = false;
+                movingBall.target = null;
+                movingBall.sourceTeam = null;
 
-            return true;
+                player.hasBall = true;
+                player.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
+                setPlayerAction(player, 'インターセプト');
+
+                visualBall.x = player.x;
+                visualBall.y = player.y;
+
+                return true;
+            } else {
+                // 失敗したら少し硬直
+                player.stunTimer = INTERCEPT_FAIL_STUN_FRAMES;
+                setPlayerAction(player, '届かず');
+            }
         }
     }
 
