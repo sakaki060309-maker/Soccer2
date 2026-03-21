@@ -494,63 +494,101 @@ function getCoverPosition(defenderTeamName, ballHolder) {
 }
 
 // ======================================================
-// 9. Support target
+// 9. サポート位置決定
 // ======================================================
+
+// 9.1 サポート候補から最適位置を選ぶ
 function chooseBestSupportTarget(player, ballHolder) {
     const opponentTeam = getOpponentTeam(player.team);
+    const teammateTeam = getTeamByName(player.team);
 
-    const toBallX = ballHolder.x - player.zoneX;
-    const toBallY = ballHolder.y - player.zoneY;
-    const distance = Math.sqrt(toBallX * toBallX + toBallY * toBallY);
+    // zone → ボール方向へ少し寄せる
+    const dx = ballHolder.x - player.zoneX;
+    const dy = ballHolder.y - player.zoneY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
 
     let baseX = player.zoneX;
     let baseY = player.zoneY;
 
-    if (distance > 0) {
-        const scale = Math.min(SUPPORT_OFFSET, distance) / distance;
-        baseX = player.zoneX + toBallX * scale;
-        baseY = player.zoneY + toBallY * scale;
+    if (dist > 0) {
+        const scale = Math.min(SUPPORT_OFFSET, dist) / dist;
+        baseX += dx * scale;
+        baseY += dy * scale;
     }
 
+    const forwardStep = 35;
+    const forwardX = player.team === 'red'
+        ? baseX + forwardStep
+        : baseX - forwardStep;
+
     const candidates = [
-        { x: baseX, y: baseY },
-        { x: baseX, y: baseY - SUPPORT_SIDE_OPTION_OFFSET },
-        { x: baseX, y: baseY + SUPPORT_SIDE_OPTION_OFFSET }
+        { x: baseX,    y: baseY },
+        { x: baseX,    y: baseY - SUPPORT_SIDE_OPTION_OFFSET },
+        { x: baseX,    y: baseY + SUPPORT_SIDE_OPTION_OFFSET },
+        { x: forwardX, y: baseY },
+        { x: forwardX, y: baseY - SUPPORT_SIDE_OPTION_OFFSET },
+        { x: forwardX, y: baseY + SUPPORT_SIDE_OPTION_OFFSET }
     ];
 
-    let bestCandidate = null;
+    const goal = getAttackingGoal(player.team);
+    const goalX = goal.x + goal.width / 2;
+    const goalY = goal.y + goal.height / 2;
+
+    let best = null;
     let bestScore = -Infinity;
 
-    for (const candidate of candidates) {
-        const targetX = clamp(candidate.x, 30, FIELD_WIDTH - 30);
-        const targetY = clamp(candidate.y, 30, FIELD_HEIGHT - 30);
+    for (const c of candidates) {
+        const tx = clamp(c.x, 30, FIELD_WIDTH - 30);
+        const ty = clamp(c.y, 30, FIELD_HEIGHT - 30);
 
-        let nearestOpponentDistance = Infinity;
-        let totalOpponentDistance = 0;
+        let nearestOpp = Infinity;
+        let totalOpp = 0;
 
-        for (const opponent of opponentTeam) {
-            const d = distanceBetweenPoints(targetX, targetY, opponent.x, opponent.y);
-            if (d < nearestOpponentDistance) nearestOpponentDistance = d;
-            totalOpponentDistance += d;
+        for (const o of opponentTeam) {
+            const d = distanceBetweenPoints(tx, ty, o.x, o.y);
+            if (d < nearestOpp) nearestOpp = d;
+            totalOpp += d;
         }
 
-        const score = nearestOpponentDistance * 2 + totalOpponentDistance * 0.03;
+        let nearestMate = Infinity;
+        for (const m of teammateTeam) {
+            if (m === player) continue;
+            const d = distanceBetweenPoints(tx, ty, m.x, m.y);
+            if (d < nearestMate) nearestMate = d;
+        }
+
+        const distToBall = distanceBetweenPoints(tx, ty, ballHolder.x, ballHolder.y);
+        const distScore = 120 - Math.abs(distToBall - 120);
+
+        const distToGoal = distanceBetweenPoints(tx, ty, goalX, goalY);
+        const goalScore = (FIELD_WIDTH - distToGoal) * 0.06;
+
+        const zoneDist = distanceBetweenPoints(tx, ty, player.zoneX, player.zoneY);
+        const zonePenalty = zoneDist * 0.15;
+
+        const score =
+            nearestOpp * 2.0 +
+            totalOpp * 0.03 +
+            Math.min(nearestMate, 120) * 0.7 +
+            distScore * 1.2 +
+            goalScore -
+            zonePenalty;
 
         if (score > bestScore) {
             bestScore = score;
-            bestCandidate = { x: targetX, y: targetY };
+            best = { x: tx, y: ty };
         }
     }
 
-    return bestCandidate;
+    return best;
 }
 
+// 9.2 サポート移動
 function setSupportTarget(player, ballHolder) {
-    const bestTarget = chooseBestSupportTarget(player, ballHolder);
-    player.targetX = bestTarget.x;
-    player.targetY = bestTarget.y;
+    const t = chooseBestSupportTarget(player, ballHolder);
+    player.targetX = t.x;
+    player.targetY = t.y;
 }
-
 // ======================================================
 // 10. Off-ball actions
 // 「ボールを持っていない攻撃側選手」が
