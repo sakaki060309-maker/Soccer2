@@ -1407,6 +1407,7 @@ function chooseBestPassTarget(passer, team) {
 }
 // ======================================================
 // 16. Zones with effective home
+// 攻撃時はボール位置に応じてDF・MFを追加で押し上げる
 // ======================================================
 function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceBallY) {
     const ballOffsetFromCenterX = referenceBallX - FIELD_WIDTH / 2;
@@ -1419,17 +1420,43 @@ function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceB
         if (isAttacking) {
             let attackShift = 0;
 
+            // 16.1 基本の押し上げ
             if (player.lineType === 'df') {
                 attackShift = DF_ATTACK_HOME_SHIFT;
             } else if (player.lineType === 'mf' || player.lineType === 'fw') {
                 attackShift = MF_FW_ATTACK_HOME_SHIFT;
             }
 
+            // 16.2 ボール位置で追加押し上げ
+            let extraShift = 0;
+
+            const ballInAttackingHalf =
+                (teamName === 'red' && referenceBallX > FIELD_WIDTH / 2) ||
+                (teamName === 'blue' && referenceBallX < FIELD_WIDTH / 2);
+
+            const ballInFinalThird =
+                (teamName === 'red' && referenceBallX > FIELD_WIDTH * 2 / 3) ||
+                (teamName === 'blue' && referenceBallX < FIELD_WIDTH * 1 / 3);
+
+            if (ballInAttackingHalf) {
+                if (player.lineType === 'df') extraShift += 40;
+                if (player.lineType === 'mf') extraShift += 50;
+            }
+
+            if (ballInFinalThird) {
+                if (player.lineType === 'df') extraShift += 30;
+                if (player.lineType === 'mf') extraShift += 40;
+            }
+
+            attackShift += extraShift;
+
             effectiveHomeX += teamName === 'red' ? attackShift : -attackShift;
         } else {
+            // 16.3 守備時は少し下げる
             effectiveHomeX += teamName === 'red' ? -DEFENSE_BACK_SHIFT : DEFENSE_BACK_SHIFT;
         }
 
+        // 16.4 ボール位置に応じた横スライド
         const shiftedX = effectiveHomeX + sideShift;
         const shiftedY = effectiveHomeY;
 
