@@ -1038,6 +1038,7 @@ function updateRestart() {
 // ★自陣ではシュート禁止
 // ★敵陣ではドリブル寄りに調整
 // ★後ろ4枚かつ敵が近い時はドリブル禁止
+// ★パス・シュート時にボール初速をリセット
 // ======================================================
 function updateAttackingTeam(team) {
     const ballHolder = getBallHolder();
@@ -1171,8 +1172,7 @@ function updateAttackingTeam(team) {
                     shootProbability = 0;
                 }
 
-                // ===== ★ここが今回の追加 =====
-                // 後ろ4枚 かつ 敵が近い → ドリブル禁止
+                // ===== 後ろ4枚 かつ 敵が近い → ドリブル禁止 =====
                 if (isBack4 && nearestDefenderDistance < 80) {
                     dribbleProbability = 0;
                 }
@@ -1199,6 +1199,7 @@ function updateAttackingTeam(team) {
                         movingBall.x = visualBall.x;
                         movingBall.y = visualBall.y;
                         movingBall.sourceTeam = player.team;
+                        movingBall.speed = 9;
                         movingBall.target = bestTarget;
                     } else {
                         const dribbleChoice = chooseDribbleTarget(player);
@@ -1212,6 +1213,7 @@ function updateAttackingTeam(team) {
                     movingBall.x = visualBall.x;
                     movingBall.y = visualBall.y;
                     movingBall.sourceTeam = player.team;
+                    movingBall.speed = 9;
 
                     movingBall.target = {
                         x: attackGoal.x + attackGoal.width / 2,
@@ -1417,9 +1419,6 @@ function checkInterception() {
     return false;
 }
 
-// ======================================================
-// 22. Ball update
-// ======================================================
 function updateBall() {
     if (!movingBall.active) return;
 
@@ -1432,6 +1431,10 @@ function updateBall() {
     movingBall.y += Math.sin(angle) * movingBall.speed;
     visualBall.x = movingBall.x;
     visualBall.y = movingBall.y;
+
+    // 減速
+    movingBall.speed *= 0.96;
+    movingBall.speed = Math.max(movingBall.speed, 1.2);
 
     const wasIntercepted = checkInterception();
     if (wasIntercepted) return;
