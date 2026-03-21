@@ -1206,26 +1206,46 @@ function updatePlayers() {
 
         updateAttackingTeam(attackingTeam);
         updateDefendingTeam(defendingTeam, ballHolder);
-    } else {
-        if (movingBall.active && movingBall.sourceTeam) {
-            const attackingTeam = getTeamByName(movingBall.sourceTeam);
-            const defendingTeam = getOpponentTeam(movingBall.sourceTeam);
 
-            updateTeamZones(attackingTeam, movingBall.sourceTeam, true, referenceBallX, referenceBallY);
-            updateTeamZones(defendingTeam, defendingTeam[0].team, false, referenceBallX, referenceBallY);
-        } else {
-            updateTeamZones(redTeam, 'red', false, referenceBallX, referenceBallY);
-            updateTeamZones(blueTeam, 'blue', false, referenceBallX, referenceBallY);
-        }
+    } else if (movingBall.active && movingBall.sourceTeam) {
+        const attackingTeam = getTeamByName(movingBall.sourceTeam);
+        const defendingTeam = getOpponentTeam(movingBall.sourceTeam);
 
-        for (const player of redTeam) {
+        updateTeamZones(attackingTeam, movingBall.sourceTeam, true, referenceBallX, referenceBallY);
+        updateTeamZones(defendingTeam, defendingTeam[0].team, false, referenceBallX, referenceBallY);
+
+        // パス中のボールを仮の守備対象にする
+        const virtualBallHolder = {
+            x: movingBall.x,
+            y: movingBall.y,
+            stealProtectionTimer: 0,
+            dribbleInvincibleTimer: 0
+        };
+
+        // 守備側はパス中でも守備AIを継続
+        updateDefendingTeam(defendingTeam, virtualBallHolder);
+
+        // 攻撃側は受け手だけボールへ、他は基本ゾーンへ
+        for (const player of attackingTeam) {
             if (player.stunTimer > 0) continue;
-            if (movingBall.active && movingBall.target === player) {
+
+            if (movingBall.target === player) {
                 player.targetX = movingBall.x;
                 player.targetY = movingBall.y;
             } else {
                 setTargetToZone(player);
             }
+
+            movePlayerTowardCurrentTarget(player);
+        }
+
+    } else {
+        updateTeamZones(redTeam, 'red', false, referenceBallX, referenceBallY);
+        updateTeamZones(blueTeam, 'blue', false, referenceBallX, referenceBallY);
+
+        for (const player of redTeam) {
+            if (player.stunTimer > 0) continue;
+            setTargetToZone(player);
             movePlayerTowardCurrentTarget(player);
         }
 
