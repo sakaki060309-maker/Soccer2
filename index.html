@@ -648,12 +648,11 @@ function chooseDribbleTarget(player) {
         : player.x - DRIBBLE_DISTANCE;
 
     const candidateTargets = [
-        { x: forwardX, y: player.y, label: 'ドリブル→' },
-        { x: forwardX, y: player.y - DRIBBLE_SIDE_OFFSET, label: 'ドリブル↗' },
-        { x: forwardX, y: player.y + DRIBBLE_SIDE_OFFSET, label: 'ドリブル↘' }
+        { x: forwardX, y: player.y, label: 'ドリブル' }, // 真っすぐ前
+        { x: forwardX, y: player.y - DRIBBLE_SIDE_OFFSET, label: 'ドリブル' }, // 左前
+        { x: forwardX, y: player.y + DRIBBLE_SIDE_OFFSET, label: 'ドリブル' }  // 右前
     ];
 
-    // ゴール方向のレーンが空いているか判定する補助関数
     function isGoalLaneOpen(targetX, targetY) {
         for (const opponent of opponentTeam) {
             const forwardGap = player.team === 'red'
@@ -662,13 +661,16 @@ function chooseDribbleTarget(player) {
 
             const sideGap = Math.abs(opponent.y - targetY);
 
-            // 前方に近く、かつ同じ縦レーン付近に敵がいれば塞がれている
             if (forwardGap > 0 && forwardGap < 140 && sideGap < 45) {
                 return false;
             }
         }
         return true;
     }
+
+    const attackGoal = getAttackingGoal(player.team);
+    const goalCenterX = attackGoal.x + attackGoal.width / 2;
+    const goalCenterY = attackGoal.y + attackGoal.height / 2;
 
     let bestCandidate = null;
     let bestScore = -Infinity;
@@ -686,16 +688,40 @@ function chooseDribbleTarget(player) {
             totalOpponentDistance += d;
         }
 
-        // ゴール方向のレーンが空いていたら大きく加点
         let goalLaneBonus = 0;
         if (isGoalLaneOpen(targetX, targetY)) {
             goalLaneBonus = 120;
         }
 
+        // ===== 前進ボーナス =====
+        let rawForwardProgress = 0;
+        if (player.team === 'red') {
+            rawForwardProgress = targetX - player.x;
+        } else {
+            rawForwardProgress = player.x - targetX;
+        }
+        const forwardProgressScore = Math.max(0, rawForwardProgress) * 1.2;
+
+        // ===== ゴール接近ボーナス =====
+        const distanceToGoal = distanceBetweenPoints(
+            targetX, targetY,
+            goalCenterX, goalCenterY
+        );
+        const goalClosenessScore = (FIELD_WIDTH - distanceToGoal) * 0.15;
+
+        // ===== 真っすぐ前ボーナス =====
+        let straightBonus = 0;
+        if (targetY === player.y) {
+            straightBonus = 30;
+        }
+
         const score =
             nearestOpponentDistance * 2 +
             totalOpponentDistance * 0.05 +
-            goalLaneBonus;
+            goalLaneBonus +
+            forwardProgressScore +
+            goalClosenessScore +
+            straightBonus;
 
         if (score > bestScore) {
             bestScore = score;
