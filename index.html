@@ -1386,10 +1386,10 @@ function getAttackingActionProbabilities(player, state) {
     } = state;
 
     let actionProbability = 0.02;
-    if (nearestDefenderDistance < 120) actionProbability = 0.03;
-    if (nearestDefenderDistance < 80) actionProbability = 0.05;
-    if (nearestDefenderDistance < 55) actionProbability = 0.08;
-    if (nearestDefenderDistance < 35) actionProbability = 0.25;
+    if (nearestDefenderDistance < 120) actionProbability = 0.10;
+    if (nearestDefenderDistance < 80) actionProbability = 0.15;
+    if (nearestDefenderDistance < 55) actionProbability = 0.25;
+    if (nearestDefenderDistance < 35) actionProbability = 0.50;
 
     let passProbability = 0.35;
     let shootProbability = 0.15;
