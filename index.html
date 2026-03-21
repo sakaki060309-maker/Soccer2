@@ -497,12 +497,15 @@ function getCoverPosition(defenderTeamName, ballHolder) {
 // 9. サポート位置決定
 // ======================================================
 
+// ======================================================
 // 9.1 サポート候補から最適位置を選ぶ
+// 中央侵入候補を追加
+// ======================================================
 function chooseBestSupportTarget(player, ballHolder) {
     const opponentTeam = getOpponentTeam(player.team);
     const teammateTeam = getTeamByName(player.team);
 
-    // zone → ボール方向へ少し寄せる
+    // 9.1.1 zone からボール方向へ少し寄せる
     const dx = ballHolder.x - player.zoneX;
     const dy = ballHolder.y - player.zoneY;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -521,13 +524,20 @@ function chooseBestSupportTarget(player, ballHolder) {
         ? baseX + forwardStep
         : baseX - forwardStep;
 
+    const centerY = FIELD_HEIGHT / 2;
+
+    // 9.1.2 候補
     const candidates = [
         { x: baseX,    y: baseY },
         { x: baseX,    y: baseY - SUPPORT_SIDE_OPTION_OFFSET },
         { x: baseX,    y: baseY + SUPPORT_SIDE_OPTION_OFFSET },
         { x: forwardX, y: baseY },
         { x: forwardX, y: baseY - SUPPORT_SIDE_OPTION_OFFSET },
-        { x: forwardX, y: baseY + SUPPORT_SIDE_OPTION_OFFSET }
+        { x: forwardX, y: baseY + SUPPORT_SIDE_OPTION_OFFSET },
+
+        // ★中央侵入候補
+        { x: forwardX, y: (baseY + centerY) / 2 },
+        { x: baseX,    y: (baseY + centerY) / 2 }
     ];
 
     const goal = getAttackingGoal(player.team);
@@ -541,15 +551,16 @@ function chooseBestSupportTarget(player, ballHolder) {
         const tx = clamp(c.x, 30, FIELD_WIDTH - 30);
         const ty = clamp(c.y, 30, FIELD_HEIGHT - 30);
 
+        // 9.1.3 敵距離
         let nearestOpp = Infinity;
         let totalOpp = 0;
-
         for (const o of opponentTeam) {
             const d = distanceBetweenPoints(tx, ty, o.x, o.y);
             if (d < nearestOpp) nearestOpp = d;
             totalOpp += d;
         }
 
+        // 9.1.4 味方距離
         let nearestMate = Infinity;
         for (const m of teammateTeam) {
             if (m === player) continue;
@@ -557,21 +568,37 @@ function chooseBestSupportTarget(player, ballHolder) {
             if (d < nearestMate) nearestMate = d;
         }
 
+        // 9.1.5 ボール保持者との距離
         const distToBall = distanceBetweenPoints(tx, ty, ballHolder.x, ballHolder.y);
         const distScore = 120 - Math.abs(distToBall - 120);
 
+        // 9.1.6 ゴール距離
         const distToGoal = distanceBetweenPoints(tx, ty, goalX, goalY);
         const goalScore = (FIELD_WIDTH - distToGoal) * 0.06;
 
+        // 9.1.7 zone から離れすぎ抑制
         const zoneDist = distanceBetweenPoints(tx, ty, player.zoneX, player.zoneY);
         const zonePenalty = zoneDist * 0.15;
 
+        // 9.1.8 シュートエリア侵入ボーナス
+        const inShotLaneY =
+            ty > FIELD_HEIGHT * 1 / 4 &&
+            ty < FIELD_HEIGHT * 3 / 4;
+
+        const inShotLaneX =
+            (player.team === 'red' && tx > FIELD_WIDTH * 3 / 4) ||
+            (player.team === 'blue' && tx < FIELD_WIDTH * 1 / 4);
+
+        const shootingBonus = (inShotLaneX && inShotLaneY) ? 70 : 0;
+
+        // 9.1.9 総合スコア
         const score =
             nearestOpp * 2.0 +
             totalOpp * 0.03 +
             Math.min(nearestMate, 120) * 0.7 +
             distScore * 1.2 +
-            goalScore -
+            goalScore +
+            shootingBonus -
             zonePenalty;
 
         if (score > bestScore) {
@@ -583,7 +610,9 @@ function chooseBestSupportTarget(player, ballHolder) {
     return best;
 }
 
+// ======================================================
 // 9.2 サポート移動
+// ======================================================
 function setSupportTarget(player, ballHolder) {
     const t = chooseBestSupportTarget(player, ballHolder);
     player.targetX = t.x;
