@@ -764,7 +764,7 @@ function setWideTarget(player) {
 }
 
 // ======================================================
-// 10.2 run（前進＋中央侵入）
+// 10.2 run（前進＋中央侵入＋ボール寄り）
 // ======================================================
 function setRunTarget(player) {
     const opponentTeam = getOpponentTeam(player.team);
@@ -773,6 +773,8 @@ function setRunTarget(player) {
     const goal = getAttackingGoal(player.team);
     const goalX = goal.x + goal.width / 2;
     const goalY = goal.y + goal.height / 2;
+
+    const ballHolder = getBallHolder();
 
     // ==================================================
     // 10.2.1 敵陣判定
@@ -799,28 +801,36 @@ function setRunTarget(player) {
     const centerY = FIELD_HEIGHT / 2;
 
     // ==================================================
-    // 10.2.3 候補生成（中央侵入追加）
+    // 10.2.3 ボール寄りの基準Y
+    // zoneYを土台にしつつ、少しだけボール保持者のYへ寄せる
+    // ==================================================
+    const baseRunY = ballHolder
+        ? player.zoneY * 0.7 + ballHolder.y * 0.3
+        : player.zoneY;
+
+    // ==================================================
+    // 10.2.4 候補生成（中央侵入＋ボール寄り）
     // ==================================================
     const candidates = [
         // 前進
-        { x: forwardX, y: player.zoneY },
-        { x: forwardX, y: player.zoneY - side },
-        { x: forwardX, y: player.zoneY + side },
+        { x: forwardX, y: baseRunY },
+        { x: forwardX, y: baseRunY - side },
+        { x: forwardX, y: baseRunY + side },
 
         // 斜め前
-        { x: halfX, y: player.zoneY - side * 0.7 },
-        { x: halfX, y: player.zoneY + side * 0.7 },
+        { x: halfX, y: baseRunY - side * 0.7 },
+        { x: halfX, y: baseRunY + side * 0.7 },
 
-        // ★中央侵入（追加）
-        { x: forwardX, y: (player.zoneY + centerY) / 2 },
-        { x: halfX,    y: (player.zoneY + centerY) / 2 }
+        // 中央侵入
+        { x: forwardX, y: (baseRunY + centerY) / 2 },
+        { x: halfX,    y: (baseRunY + centerY) / 2 }
     ];
 
     let best = null;
     let bestScore = -Infinity;
 
     // ==================================================
-    // 10.2.4 評価
+    // 10.2.5 評価
     // ==================================================
     for (const c of candidates) {
         const tx = clamp(c.x, 30, FIELD_WIDTH - 30);
@@ -851,9 +861,7 @@ function setRunTarget(player) {
         // ゴール距離
         const distToGoal = distanceBetweenPoints(tx, ty, goalX, goalY);
 
-        // ==================================================
-        // 10.2.5 シュートエリアボーナス
-        // ==================================================
+        // シュートエリアボーナス
         const inShotLaneY =
             ty > FIELD_HEIGHT * 1 / 4 &&
             ty < FIELD_HEIGHT * 3 / 4;
@@ -864,9 +872,7 @@ function setRunTarget(player) {
 
         const shootingBonus = (inShotLaneX && inShotLaneY) ? 80 : 0;
 
-        // ==================================================
-        // 10.2.6 総合スコア
-        // ==================================================
+        // 総合スコア
         const score =
             nearestOpp * 2.0 +
             totalOpp * 0.03 +
