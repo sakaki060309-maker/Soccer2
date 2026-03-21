@@ -465,9 +465,13 @@ function getCoverPosition(defenderTeamName, ballHolder) {
         coverX = ballHolder.x + COVER_OFFSET_X;
     }
 
+    // ★中央寄せ追加
+    const CENTER_Y = FIELD_HEIGHT / 2;
+    const coverY = ballHolder.y * 0.7 + CENTER_Y * 0.3;
+
     return {
         x: clamp(coverX, 30, FIELD_WIDTH - 30),
-        y: clamp(ballHolder.y, 30, FIELD_HEIGHT - 30)
+        y: clamp(coverY, 30, FIELD_HEIGHT - 30)
     };
 }
 
