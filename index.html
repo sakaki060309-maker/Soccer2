@@ -1397,9 +1397,18 @@ function checkInterception() {
     for (const player of interceptingTeam) {
         if (player.stunTimer > 0) continue;
 
-        const distanceToBall = distanceBetweenPoints(player.x, player.y, movingBall.x, movingBall.y);
+        const distanceToBall = distanceBetweenPoints(
+            player.x, player.y,
+            movingBall.x, movingBall.y
+        );
 
-        if (distanceToBall <= INTERCEPT_DISTANCE) {
+        // ボールが速いほどインターセプト可能半径を小さくする
+        const effectiveInterceptDistance = Math.max(
+            8,
+            INTERCEPT_DISTANCE - movingBall.speed * 0.8
+        );
+
+        if (distanceToBall <= effectiveInterceptDistance) {
             clearBallPossession();
 
             movingBall.active = false;
@@ -1420,6 +1429,10 @@ function checkInterception() {
     return false;
 }
 
+
+//-----------------------------
+// 22. ボールの挙動
+//-----------------------------
 function updateBall() {
     if (!movingBall.active) return;
 
