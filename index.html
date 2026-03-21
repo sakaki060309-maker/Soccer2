@@ -1039,7 +1039,7 @@ function updateRestart() {
 
 // ======================================================
 // 18. Attacking team update
-// ★自陣ではシュート禁止
+// ★シュートは「奥1/4 かつ 中央1/2」のみ
 // ★敵陣ではドリブル寄りに調整
 // ★後ろ4枚かつ敵が近い時はドリブル禁止
 // ★パス・シュート時にボール初速をリセット
@@ -1114,12 +1114,24 @@ function updateAttackingTeam(team) {
                 goalCenterX, goalCenterY
             );
 
-            // ===== 自陣判定 =====
+            // ===== 自陣 / 敵陣判定 =====
             const isInOwnHalf =
                 (player.team === 'red' && player.x < FIELD_WIDTH / 2) ||
                 (player.team === 'blue' && player.x > FIELD_WIDTH / 2);
 
             const isInAttackingHalf = !isInOwnHalf;
+
+            // ===== シュート可能エリア判定 =====
+            // 奥1/4 かつ 中央1/2（サイド1/4除外）
+            const isInShootingZone =
+                (
+                    (player.team === 'red' && player.x > FIELD_WIDTH * 3 / 4) ||
+                    (player.team === 'blue' && player.x < FIELD_WIDTH * 1 / 4)
+                ) &&
+                (
+                    player.y > FIELD_HEIGHT * 1 / 4 &&
+                    player.y < FIELD_HEIGHT * 3 / 4
+                );
 
             // ===== 行動発生確率 =====
             let actionProbability = 0.02;
@@ -1129,7 +1141,6 @@ function updateAttackingTeam(team) {
             if (nearestDefenderDistance < 35) actionProbability = 0.25;
 
             if (Math.random() < actionProbability) {
-
                 let passProbability = 0.35;
                 let shootProbability = 0.15;
                 let dribbleProbability = 0.50;
@@ -1171,8 +1182,8 @@ function updateAttackingTeam(team) {
                     dribbleProbability += 0.12;
                 }
 
-                // ===== 自陣シュート禁止 =====
-                if (isInOwnHalf) {
+                // ===== シュートは指定エリア内のみ =====
+                if (!isInShootingZone) {
                     shootProbability = 0;
                 }
 
