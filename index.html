@@ -2089,7 +2089,7 @@ function updateAttackingTeam(team) {
 // ======================================================
 // 19. 守備AI
 // press / cover / zoneスライド
-// 自陣で相手が持った時は zone担当も少し強めに寄せる
+// coverは「8:2カバー位置」に一番近い選手を採用
 // ======================================================
 function updateDefendingTeam(team, ballHolder) {
     if (!ballHolder) {
@@ -2103,16 +2103,30 @@ function updateDefendingTeam(team, ballHolder) {
 
     const availableDefenders = team.filter(p => p.stunTimer <= 0);
 
-    // 19.1 press役
+    // 19.1 press役（従来通り、ボール保持者に最も近い選手）
     const pressingDefender = availableDefenders.length > 0
         ? getClosestPlayerToTarget(availableDefenders, ballHolder)
         : null;
 
-    // 19.2 cover役
+    // 19.2 cover役（press以外から、cover地点に最も近い選手）
     const coverCandidates = availableDefenders.filter(p => p !== pressingDefender);
-    const coverDefender = coverCandidates.length > 0
-        ? getClosestPlayerToTarget(coverCandidates, ballHolder)
-        : null;
+
+    const coverPos = getCoverPosition(team[0].team, ballHolder);
+
+    let coverDefender = null;
+    let bestCoverDistance = Infinity;
+
+    for (const defender of coverCandidates) {
+        const d = distanceBetweenPoints(
+            defender.x, defender.y,
+            coverPos.x, coverPos.y
+        );
+
+        if (d < bestCoverDistance) {
+            bestCoverDistance = d;
+            coverDefender = defender;
+        }
+    }
 
     // 19.3 全体更新
     for (const defender of team) {
@@ -2158,7 +2172,6 @@ function updateDefendingTeam(team, ballHolder) {
         // 19.3.2 cover
         // -----------------------------
         else if (defender === coverDefender) {
-            const coverPos = getCoverPosition(defender.team, ballHolder);
             defender.targetX = coverPos.x;
             defender.targetY = coverPos.y;
             setPlayerAction(defender, 'cover');
