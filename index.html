@@ -527,9 +527,9 @@ function getCoverPosition(defenderTeamName, ballHolder) {
     const goalX = defenderTeamName === 'red' ? 0 : FIELD_WIDTH;
     const goalY = FIELD_HEIGHT / 2;
 
-    // 内分比（ボール:ゴール = 8:2）
-    const m = 2; // ゴール側
-    const n = 8; // ボール側
+    // 内分比
+    const m = 1.5; // ゴール側
+    const n = 8.5; // ボール側
 
     const coverX = (m * goalX + n * ballHolder.x) / (m + n);
     const coverY = (m * goalY + n * ballHolder.y) / (m + n);
