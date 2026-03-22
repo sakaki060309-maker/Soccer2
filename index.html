@@ -1895,6 +1895,7 @@ function executeAttackingAction(player, team, probs, state) {
 
 // ======================================================
 // 18.4 全体更新（メイン）
+// actionProbText 更新版
 // ======================================================
 function updateAttackingTeam(team) {
     const ballHolder = getBallHolder();
@@ -1943,12 +1944,20 @@ function updateAttackingTeam(team) {
             const state = analyzeBallHolderState(player, team);
             const probs = getAttackingActionProbabilities(player, state);
 
+            // 行動選択確率の表示
+            player.actionProbText =
+                `P:${Math.round(probs.passProbability * 100)} ` +
+                `S:${Math.round(probs.shootProbability * 100)} ` +
+                `D:${Math.round(probs.dribbleProbability * 100)}`;
+
             if (Math.random() < probs.actionProbability) {
                 executeAttackingAction(player, team, probs, state);
             }
         }
     }
 }
+
+    
 // ======================================================
 // 19. 守備AI
 // press / cover / zoneスライド
