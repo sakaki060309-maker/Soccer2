@@ -95,7 +95,7 @@ const STEAL_PROTECTION_FRAMES = 20;
 const INTERCEPT_DISTANCE = 12;
 const PRESS_DISTANCE = 45;
 const STEAL_DISTANCE = 20;
-const SUPPORT_OFFSET = 90;
+const SUPPORT_OFFSET = 140;
 
 const SIDE_SLIDE_RATIO = 0.22;
 const DEFENSE_BACK_SHIFT = 10;
@@ -648,7 +648,7 @@ function chooseBestSupportTarget(player, ballHolder) {
 
         // 9.1.7 zone から離れすぎ抑制
         const zoneDist = distanceBetweenPoints(tx, ty, player.zoneX, player.zoneY);
-        const zonePenalty = zoneDist * 0.15;
+        const zonePenalty = zoneDist * 0.07;
 
         // 9.1.8 シュートエリア侵入ボーナス
         const inShotLaneY =
