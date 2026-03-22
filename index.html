@@ -1321,7 +1321,7 @@ function getPassLanePenalty(passer, receiver, opponents) {
 // ======================================================
 // 15. Pass target
 // 簡易オフサイド対応版（相手の最後尾基準）
-// passScoreText 保存版
+// 一時停止時表示対応版
 // ======================================================
 function chooseBestPassTarget(passer, team) {
     let bestTarget = null;
@@ -1351,6 +1351,9 @@ function chooseBestPassTarget(passer, team) {
 
     for (const mate of team) {
         if (mate === passer) continue;
+
+        // 表示を毎回初期化
+        mate.passScoreText = '';
 
         // ===== 簡易オフサイド判定（相手の最後尾基準） =====
         const opponentTeam = getOpponentTeam(passer.team);
@@ -1382,7 +1385,10 @@ function chooseBestPassTarget(passer, team) {
                 (passer.team === 'blue' && mate.x < lastDefender.x)
             );
 
-        if (isOffside) continue;
+        if (isOffside) {
+            mate.passScoreText = 'OFF';
+            continue;
+        }
 
         // ===== 前線3人ルール =====
         const mateInOwnHalf =
@@ -1390,6 +1396,7 @@ function chooseBestPassTarget(passer, team) {
             (passer.team === 'blue' && mate.x > FIELD_WIDTH / 2);
 
         if (passerIsTop3Forward && hasOtherTeammateInAttackingHalf && mateInOwnHalf) {
+            mate.passScoreText = 'BACK';
             continue;
         }
 
