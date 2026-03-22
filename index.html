@@ -1122,8 +1122,12 @@ function getClosestPlayerToTarget(team, targetPlayer) {
     return closest;
 }
 
+    
+
+
 // ======================================================
 // 12. Dribble target
+// 数値調整版（真っすぐ前偏重を弱める）
 // ======================================================
 function chooseDribbleTarget(player) {
     const opponentTeam = getOpponentTeam(player.team);
@@ -1132,10 +1136,12 @@ function chooseDribbleTarget(player) {
         ? player.x + DRIBBLE_DISTANCE
         : player.x - DRIBBLE_DISTANCE;
 
+    const sideOffset = DRIBBLE_SIDE_OFFSET * 1.7;
+
     const candidateTargets = [
         { x: forwardX, y: player.y, label: 'ドリブル' }, // 真っすぐ前
-        { x: forwardX, y: player.y - DRIBBLE_SIDE_OFFSET, label: 'ドリブル' }, // 左前
-        { x: forwardX, y: player.y + DRIBBLE_SIDE_OFFSET, label: 'ドリブル' }  // 右前
+        { x: forwardX, y: player.y - sideOffset, label: 'ドリブル' }, // 左前
+        { x: forwardX, y: player.y + sideOffset, label: 'ドリブル' }  // 右前
     ];
 
     function isGoalLaneOpen(targetX, targetY) {
@@ -1187,17 +1193,17 @@ function chooseDribbleTarget(player) {
         }
         const forwardProgressScore = Math.max(0, rawForwardProgress) * 1.6;
 
-        // ===== ゴール接近ボーナス =====
+        // ===== ゴール接近ボーナス（強化） =====
         const distanceToGoal = distanceBetweenPoints(
             targetX, targetY,
             goalCenterX, goalCenterY
         );
-        const goalClosenessScore = (FIELD_WIDTH - distanceToGoal) * 0.15;
+        const goalClosenessScore = (FIELD_WIDTH - distanceToGoal) * 0.28;
 
-        // ===== 真っすぐ前ボーナス =====
+        // ===== 真っすぐ前ボーナス（弱化） =====
         let straightBonus = 0;
         if (targetY === player.y) {
-            straightBonus = 30;
+            straightBonus = 8;
         }
 
         const score =
@@ -1216,6 +1222,10 @@ function chooseDribbleTarget(player) {
 
     return bestCandidate;
 }
+
+    
+
+
 // ======================================================
 // 13. Dribble duel
 // ======================================================
