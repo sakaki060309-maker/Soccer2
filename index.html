@@ -648,7 +648,7 @@ function chooseBestSupportTarget(player, ballHolder) {
 
         // 9.1.7 zone から離れすぎ抑制
         const zoneDist = distanceBetweenPoints(tx, ty, player.zoneX, player.zoneY);
-        const zonePenalty = zoneDist * 0.07;
+        const zonePenalty = zoneDist * 0.15;
 
         // 9.1.8 シュートエリア侵入ボーナス
         const inShotLaneY =
