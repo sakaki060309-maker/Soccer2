@@ -1617,9 +1617,10 @@ function chooseBestPassTarget(passer, team) {
     return bestTarget;
 }
     
+    
 // ======================================================
 // 16. Zones with effective home
-// 攻撃時はボール位置に応じてDF・MFを追加で押し上げる
+// 攻撃時はボール位置に応じてDF・MF・FWを押し上げる（FWは強め）
 // ======================================================
 function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceBallY) {
     const ballOffsetFromCenterX = referenceBallX - FIELD_WIDTH / 2;
@@ -1632,14 +1633,20 @@ function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceB
         if (isAttacking) {
             let attackShift = 0;
 
-            // 16.1 基本の押し上げ
+            // ==================================================
+            // 16.1 基本の押し上げ（FWだけ強化）
+            // ==================================================
             if (player.lineType === 'df') {
                 attackShift = DF_ATTACK_HOME_SHIFT;
-            } else if (player.lineType === 'mf' || player.lineType === 'fw') {
+            } else if (player.lineType === 'mf') {
                 attackShift = MF_FW_ATTACK_HOME_SHIFT;
+            } else if (player.lineType === 'fw') {
+                attackShift = 300; // ★ここを強化
             }
 
+            // ==================================================
             // 16.2 ボール位置で追加押し上げ
+            // ==================================================
             let extraShift = 0;
 
             const ballInAttackingHalf =
@@ -1653,22 +1660,31 @@ function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceB
             if (ballInAttackingHalf) {
                 if (player.lineType === 'df') extraShift += 40;
                 if (player.lineType === 'mf') extraShift += 50;
+                if (player.lineType === 'fw') extraShift += 20; // FWも少しだけ追加
             }
 
             if (ballInFinalThird) {
                 if (player.lineType === 'df') extraShift += 30;
                 if (player.lineType === 'mf') extraShift += 40;
+                if (player.lineType === 'fw') extraShift += 20; // FWも少し追加
             }
 
             attackShift += extraShift;
 
             effectiveHomeX += teamName === 'red' ? attackShift : -attackShift;
+
         } else {
+            // ==================================================
             // 16.3 守備時は少し下げる
-            effectiveHomeX += teamName === 'red' ? -DEFENSE_BACK_SHIFT : DEFENSE_BACK_SHIFT;
+            // ==================================================
+            effectiveHomeX += teamName === 'red'
+                ? -DEFENSE_BACK_SHIFT
+                : DEFENSE_BACK_SHIFT;
         }
 
+        // ==================================================
         // 16.4 ボール位置に応じた横スライド
+        // ==================================================
         const shiftedX = effectiveHomeX + sideShift;
         const shiftedY = effectiveHomeY;
 
@@ -1676,6 +1692,7 @@ function updateTeamZones(team, teamName, isAttacking, referenceBallX, referenceB
         player.zoneY = clamp(shiftedY, 30, FIELD_HEIGHT - 30);
     }
 }
+    
 
 // ======================================================
 // 17. Reset
