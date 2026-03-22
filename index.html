@@ -1127,23 +1127,32 @@ function evaluateOffBall(player, team, ballHolder) {
 
 // ======================================================
 // 10.4 どの off-ball 行動を選ぶか
-// 点数を比較して、一番高い行動を返す
-// ・supportScore が最大なら support
-// ・wideScore が最大なら wide
-// ・それ以外は run
 // ======================================================
 function chooseOffBallAction(player, team) {
     const ballHolder = getBallHolder();
-
-    // 念のため、ボール保持者がいなければ support を返す
-    // （実際には updateAttackingTeam 側で ballHolder がいる時しか
-    // ここを呼ばない想定だけど、保険として入れている）
     if (!ballHolder) return 'support';
+
+    // ==================================================
+    // FWがDFラインを超えていたら強制support
+    // ==================================================
+    if (player.lineType === 'fw') {
+        const opponentTeam = getOpponentTeam(player.team);
+        const lastDefenderX = player.team === 'red'
+            ? Math.max(...opponentTeam.map(p => p.x))
+            : Math.min(...opponentTeam.map(p => p.x));
+
+        const beyondLine = player.team === 'red'
+            ? player.x > lastDefenderX
+            : player.x < lastDefenderX;
+
+        if (beyondLine) {
+            return 'support';
+        }
+    }
 
     const { supportScore, wideScore, runScore } =
         evaluateOffBall(player, team, ballHolder);
 
-    // 点数が一番高いものを採用
     if (supportScore >= wideScore && supportScore >= runScore) {
         return 'support';
     }
