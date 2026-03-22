@@ -2457,7 +2457,7 @@ function update() {
     
 
 // ======================================================
-// 25. Draw
+// 25. Draw 描写
 // ======================================================
 
 // 25.1 フィールド
@@ -2478,11 +2478,55 @@ function drawField() {
     ctx.stroke();
 }
 
-// 25.2 ゴール
+// 25.2.1 ゴール
 function drawGoals() {
     ctx.fillStyle = '#dddddd';
     ctx.fillRect(leftGoal.x, leftGoal.y, leftGoal.width, leftGoal.height);
     ctx.fillRect(rightGoal.x, rightGoal.y, rightGoal.width, rightGoal.height);
+}
+
+// 25.2.2 ペナルティエリア＋ゴールエリア
+function drawPenaltyAreas() {
+    const penaltyDepth = FIELD_WIDTH * 0.16;
+    const goalAreaDepth = FIELD_WIDTH * 0.055;
+
+    const penaltyWidth = FIELD_HEIGHT * 0.6;
+    const goalAreaWidth = FIELD_HEIGHT * 0.26;
+
+    const centerY = FIELD_HEIGHT / 2;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2;
+
+    // 左
+    ctx.strokeRect(
+        0,
+        centerY - penaltyWidth / 2,
+        penaltyDepth,
+        penaltyWidth
+    );
+
+    ctx.strokeRect(
+        0,
+        centerY - goalAreaWidth / 2,
+        goalAreaDepth,
+        goalAreaWidth
+    );
+
+    // 右
+    ctx.strokeRect(
+        FIELD_WIDTH - penaltyDepth,
+        centerY - penaltyWidth / 2,
+        penaltyDepth,
+        penaltyWidth
+    );
+
+    ctx.strokeRect(
+        FIELD_WIDTH - goalAreaDepth,
+        centerY - goalAreaWidth / 2,
+        goalAreaDepth,
+        goalAreaWidth
+    );
 }
 
 // 25.3 ボール保持者の前方コーン
