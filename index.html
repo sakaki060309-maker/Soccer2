@@ -2303,7 +2303,7 @@ function checkInterception() {
         // ボールが速いほどインターセプト可能半径を小さくする
         const effectiveInterceptDistance = Math.max(
             8,
-            INTERCEPT_DISTANCE - movingBall.speed * 0.8
+            INTERCEPT_DISTANCE - movingBall.speed * 1.2
         );
 
         if (distanceToBall <= effectiveInterceptDistance) {
