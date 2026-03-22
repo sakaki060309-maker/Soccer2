@@ -2432,11 +2432,14 @@ function draw() {
     drawField();
     drawGoals();
     drawBallHolderCone();
-    drawPlayers();
+
+    drawTeam(redTeam);   // ← 追加
+    drawTeam(blueTeam);  // ← 追加
+
     drawBall();
     drawUI();
 }
-
+    
 // ======================================================
 // 26. Main loop
 // ======================================================
