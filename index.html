@@ -125,18 +125,12 @@ const INTERCEPT_FAIL_STUN_FRAMES = 12;
 
 // ======================================================
 // 7. Team creation
-// 7.1 red: 4-2-3-1
-// 7.2 blue: 3-3-4
-// speed: 全体20%減
+// passScoreText 追加版
 // ======================================================
 
-// ======================================================
 // 7.1 red: 4-2-3-1
-// サイドバック(1,4)を少し高い位置に変更
-// ======================================================
 function createRedTeam() {
     return [
-        // ===== 4バック =====
         {
             id: 1, team: 'red', label: '1', lineType: 'df',
             x: 220, y: 110, targetX: 220, targetY: 110,
@@ -144,6 +138,7 @@ function createRedTeam() {
             speed: 1.84, radius: 15, color: '#ff4b4b',
             hasBall: true, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -154,6 +149,7 @@ function createRedTeam() {
             speed: 1.76, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -164,6 +160,7 @@ function createRedTeam() {
             speed: 1.76, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -174,11 +171,10 @@ function createRedTeam() {
             speed: 1.84, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
-
-        // ===== 2ボランチ =====
         {
             id: 5, team: 'red', label: '5', lineType: 'mf',
             x: 340, y: 260, targetX: 340, targetY: 260,
@@ -186,6 +182,7 @@ function createRedTeam() {
             speed: 1.92, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -196,11 +193,10 @@ function createRedTeam() {
             speed: 1.92, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
-
-        // ===== 2列目の3人 =====
         {
             id: 7, team: 'red', label: '7', lineType: 'mf',
             x: 520, y: 140, targetX: 520, targetY: 140,
@@ -208,6 +204,7 @@ function createRedTeam() {
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -218,6 +215,7 @@ function createRedTeam() {
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -228,11 +226,10 @@ function createRedTeam() {
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
-
-        // ===== 1トップ =====
         {
             id: 10, team: 'red', label: '10', lineType: 'fw',
             x: 700, y: 350, targetX: 700, targetY: 350,
@@ -240,15 +237,14 @@ function createRedTeam() {
             speed: 2.08, radius: 15, color: '#ff4b4b',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         }
     ];
 }
 
-// ======================================================
 // 7.2 blue: 3-3-4
-// ======================================================
 function createBlueTeam() {
     return [
         {
@@ -258,6 +254,7 @@ function createBlueTeam() {
             speed: 1.84, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -268,6 +265,7 @@ function createBlueTeam() {
             speed: 1.76, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -278,10 +276,10 @@ function createBlueTeam() {
             speed: 1.76, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
-
         {
             id: 104, team: 'blue', label: 'D', lineType: 'mf',
             x: 840, y: 140, targetX: 840, targetY: 140,
@@ -289,6 +287,7 @@ function createBlueTeam() {
             speed: 1.92, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -299,6 +298,7 @@ function createBlueTeam() {
             speed: 1.92, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -309,10 +309,10 @@ function createBlueTeam() {
             speed: 1.92, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
-
         {
             id: 107, team: 'blue', label: 'G', lineType: 'fw',
             x: 640, y: 120, targetX: 640, targetY: 120,
@@ -320,6 +320,7 @@ function createBlueTeam() {
             speed: 2.08, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -330,6 +331,7 @@ function createBlueTeam() {
             speed: 2.08, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -340,6 +342,7 @@ function createBlueTeam() {
             speed: 2.08, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         },
@@ -350,11 +353,13 @@ function createBlueTeam() {
             speed: 2.08, radius: 15, color: '#4b7bff',
             hasBall: false, stealProtectionTimer: 0,
             actionText: '', actionTimer: 0,
+            passScoreText: '',
             stunTimer: 0, dribbleInvincibleTimer: 0,
             offBallAction: 'support', offBallActionTimer: 0
         }
     ];
 }
+    
 // ======================================================
 // 8. Utility
 // ======================================================
@@ -491,6 +496,13 @@ function getCoverPosition(defenderTeamName, ballHolder) {
         x: clamp(coverX, 30, FIELD_WIDTH - 30),
         y: clamp(coverY, 30, FIELD_HEIGHT - 30)
     };
+}
+
+//パススコアテキスト表示用
+function clearPassScoreTexts() {
+    for (const player of getAllPlayers()) {
+        player.passScoreText = '';
+    }
 }
 
 // ======================================================
@@ -1304,9 +1316,12 @@ function getPassLanePenalty(passer, receiver, opponents) {
 
     return penalty;
 }
+
+    
 // ======================================================
 // 15. Pass target
 // 簡易オフサイド対応版（相手の最後尾基準）
+// passScoreText 保存版
 // ======================================================
 function chooseBestPassTarget(passer, team) {
     let bestTarget = null;
@@ -1370,7 +1385,6 @@ function chooseBestPassTarget(passer, team) {
         if (isOffside) continue;
 
         // ===== 前線3人ルール =====
-        // パサー以外に敵陣の味方がいる時だけ発動
         const mateInOwnHalf =
             (passer.team === 'red' && mate.x < FIELD_WIDTH / 2) ||
             (passer.team === 'blue' && mate.x > FIELD_WIDTH / 2);
@@ -1460,6 +1474,9 @@ function chooseBestPassTarget(passer, team) {
             passLanePenalty -
             backwardPassPenalty;
 
+        // ===== 一時停止時表示用 =====
+        mate.passScoreText = Math.round(score).toString();
+
         if (score > bestScore) {
             bestScore = score;
             bestTarget = mate;
@@ -1468,6 +1485,8 @@ function chooseBestPassTarget(passer, team) {
 
     return bestTarget;
 }
+
+    
 // ======================================================
 // 16. Zones with effective home
 // 攻撃時はボール位置に応じてDF・MFを追加で押し上げる
@@ -2317,7 +2336,10 @@ function drawBallHolderCone() {
     ctx.stroke();
 }
 
-// 25.4 選手
+
+// 25.4 drawTeam(team)
+// passScoreText 描画追加版
+
 function drawTeam(team) {
     for (const player of team) {
         ctx.beginPath();
@@ -2331,6 +2353,12 @@ function drawTeam(team) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(player.label, player.x, player.y);
+
+        if (player.passScoreText) {
+            ctx.fillStyle = '#00ffcc';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText(player.passScoreText, player.x, player.y - 42);
+        }
 
         if (player.actionText && player.actionTimer > 0) {
             ctx.fillStyle = 'white';
@@ -2369,12 +2397,7 @@ function drawTeam(team) {
         ctx.closePath();
     }
 }
-
-function drawPlayers() {
-    drawTeam(redTeam);
-    drawTeam(blueTeam);
-}
-
+    
 // 25.5 ボール
 function drawBall() {
     const someoneHasBall = getBallHolder() !== null;
@@ -2479,19 +2502,30 @@ update = function () {
 };
 
 // 27.4 キー操作
+// Spaceで一時停止した瞬間だけ passScoreText を計算
+
 document.addEventListener('keydown', (e) => {
-    // 入力欄にフォーカス中なら無視したい場合の保険
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-    // Space: 一時停止 / 再開
     if (e.code === 'Space') {
         e.preventDefault();
         isPausedByUser = !isPausedByUser;
+
+        if (isPausedByUser) {
+            clearPassScoreTexts();
+
+            const ballHolder = getBallHolder();
+            if (ballHolder) {
+                const team = getTeamByName(ballHolder.team);
+                chooseBestPassTarget(ballHolder, team);
+            }
+        } else {
+            clearPassScoreTexts();
+        }
         return;
     }
 
-    // N: 一時停止中に1フレームだけ進める
     if (e.key === 'n' || e.key === 'N') {
         if (isPausedByUser) {
             stepRequested = true;
@@ -2499,19 +2533,16 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // 1: 通常速度
     if (e.key === '1') {
         gameSpeedMode = 1;
         return;
     }
 
-    // 2: 1/2倍
     if (e.key === '2') {
         gameSpeedMode = 2;
         return;
     }
 
-    // 3: 1/4倍
     if (e.key === '3') {
         gameSpeedMode = 4;
         return;
