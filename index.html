@@ -1320,7 +1320,7 @@ function getPassLanePenalty(passer, receiver, opponents) {
     
 // ======================================================
 // 15. Pass target
-// 簡易オフサイド対応版（相手の最後尾基準）
+// 簡易オフサイド対応版（相手の最終ラインxを直接使用）
 // 一時停止時表示対応版
 // ======================================================
 function chooseBestPassTarget(passer, team) {
@@ -1330,9 +1330,9 @@ function chooseBestPassTarget(passer, team) {
     // ===== パサーが味方の中でどれだけ前にいるかを判定 =====
     const sortedByForwardDepth = [...team].sort((a, b) => {
         if (passer.team === 'red') {
-            return a.x - b.x; // redはxが大きいほど前
+            return b.x - a.x; // redはxが大きいほど前
         } else {
-            return b.x - a.x; // blueはxが小さいほど前
+            return a.x - b.x; // blueはxが小さいほど前
         }
     });
 
@@ -1355,7 +1355,7 @@ function chooseBestPassTarget(passer, team) {
         // 表示を毎回初期化
         mate.passScoreText = '';
 
-        // ===== 簡易オフサイド判定（相手の最後尾基準） =====
+        // ===== 簡易オフサイド判定（相手の最終ラインxを直接使う） =====
         const opponentTeam = getOpponentTeam(passer.team);
 
         const mateInAttackingHalf =
@@ -1366,23 +1366,16 @@ function chooseBestPassTarget(passer, team) {
             (passer.team === 'red' && mate.x > passer.x) ||
             (passer.team === 'blue' && mate.x < passer.x);
 
-        const sortedDefenders = [...opponentTeam].sort((a, b) => {
-            if (passer.team === 'red') {
-                return a.x - b.x; // red攻撃時は相手の左側がゴール寄り
-            } else {
-                return b.x - a.x; // blue攻撃時は相手の右側がゴール寄り
-            }
-        });
-
-        const lastDefender = sortedDefenders.length > 0 ? sortedDefenders[0] : null;
+        const lastDefenderX = passer.team === 'red'
+            ? Math.max(...opponentTeam.map(p => p.x))
+            : Math.min(...opponentTeam.map(p => p.x));
 
         const isOffside =
             mateInAttackingHalf &&
             mateAheadOfBall &&
-            lastDefender &&
             (
-                (passer.team === 'red' && mate.x > lastDefender.x) ||
-                (passer.team === 'blue' && mate.x < lastDefender.x)
+                (passer.team === 'red' && mate.x > lastDefenderX) ||
+                (passer.team === 'blue' && mate.x < lastDefenderX)
             );
 
         if (isOffside) {
