@@ -1330,9 +1330,9 @@ function chooseBestPassTarget(passer, team) {
     // ===== パサーが味方の中でどれだけ前にいるかを判定 =====
     const sortedByForwardDepth = [...team].sort((a, b) => {
         if (passer.team === 'red') {
-            return b.x - a.x; // redはxが大きいほど前
+            return a.x - b.x; // redはxが大きいほど前
         } else {
-            return a.x - b.x; // blueはxが小さいほど前
+            return b.x - a.x; // blueはxが小さいほど前
         }
     });
 
