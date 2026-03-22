@@ -2703,11 +2703,14 @@ function drawUI() {
 // 25.7 全体描画
 function draw() {
     drawField();
+
+    drawPenaltyAreas();
+
     drawGoals();
     drawBallHolderCone();
 
-    drawTeam(redTeam);   // ← 追加
-    drawTeam(blueTeam);  // ← 追加
+    drawTeam(redTeam);
+    drawTeam(blueTeam);
 
     drawBall();
     drawUI();
