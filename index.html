@@ -60,6 +60,9 @@ let scoreBlue = 0;
 let isRestarting = false;
 let restartTimer = 0;
 
+//どっちがボール保持か記録
+let lastBallHolderTeamForDebug = null;
+
 // ======================================================
 // 4. Ball state
 // ======================================================
@@ -2244,14 +2247,25 @@ function checkGoal() {
         return;
     }
 }
+    
 
 // ======================================================
 // 24. Update
+// 保持チームが変わったら passScoreText を消す版
 // ======================================================
 function update() {
     if (isRestarting) {
         updateRestart();
         return;
+    }
+
+    const ballHolder = getBallHolder();
+    const currentHolderTeam = ballHolder ? ballHolder.team : null;
+
+    // ボール保持チームが変わったら表示を消す
+    if (currentHolderTeam !== lastBallHolderTeamForDebug) {
+        clearPassScoreTexts();
+        lastBallHolderTeamForDebug = currentHolderTeam;
     }
 
     updateStealProtectionTimers();
@@ -2262,6 +2276,7 @@ function update() {
     updateBall();
     checkGoal();
 }
+    
 
 // ======================================================
 // 25. Draw
