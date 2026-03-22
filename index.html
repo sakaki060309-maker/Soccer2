@@ -2156,7 +2156,7 @@ function updateDefendingTeam(team, ballHolder) {
             if (opponentInDefendingHalf) {
                 // 自陣では少し強めにボール側へ寄せる
                 targetX = clamp(
-                    defender.zoneX * 0.55 + ballHolder.x * 0.45,
+                    defender.zoneX * 0.6 + ballHolder.x * 0.4,
                     30,
                     FIELD_WIDTH - 30
                 );
