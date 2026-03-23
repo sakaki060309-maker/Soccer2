@@ -562,13 +562,14 @@ function clearPassRanks() {
     }
 }
 
+
 // ======================================================
 // 9. サポート位置決定
 // ======================================================
 
 // ======================================================
 // 9.1 サポート候補から最適位置を選ぶ
-// 中央侵入候補を追加
+// 中央侵入候補 + オフサイド候補大幅減点版
 // ======================================================
 function chooseBestSupportTarget(player, ballHolder) {
     const opponentTeam = getOpponentTeam(player.team);
@@ -612,6 +613,11 @@ function chooseBestSupportTarget(player, ballHolder) {
     const goal = getAttackingGoal(player.team);
     const goalX = goal.x + goal.width / 2;
     const goalY = goal.y + goal.height / 2;
+
+    // 相手最終ライン
+    const lastDefenderX = player.team === 'red'
+        ? Math.max(...opponentTeam.map(p => p.x))
+        : Math.min(...opponentTeam.map(p => p.x));
 
     let best = null;
     let bestScore = -Infinity;
@@ -660,6 +666,26 @@ function chooseBestSupportTarget(player, ballHolder) {
 
         const shootingBonus = (inShotLaneX && inShotLaneY) ? 70 : 0;
 
+        // 9.1.8.5 オフサイド候補なら大幅減点
+        const inAttackingHalf =
+            (player.team === 'red' && tx > FIELD_WIDTH / 2) ||
+            (player.team === 'blue' && tx < FIELD_WIDTH / 2);
+
+        const aheadOfBall =
+            (player.team === 'red' && tx > ballHolder.x) ||
+            (player.team === 'blue' && tx < ballHolder.x);
+
+        const beyondLastDefender =
+            (player.team === 'red' && tx > lastDefenderX) ||
+            (player.team === 'blue' && tx < lastDefenderX);
+
+        const isOffsideCandidate =
+            inAttackingHalf &&
+            aheadOfBall &&
+            beyondLastDefender;
+
+        const offsidePenalty = isOffsideCandidate ? 1000 : 0;
+
         // 9.1.9 総合スコア
         const score =
             nearestOpp * 2.0 +
@@ -668,7 +694,8 @@ function chooseBestSupportTarget(player, ballHolder) {
             distScore * 1.2 +
             goalScore +
             shootingBonus -
-            zonePenalty;
+            zonePenalty -
+            offsidePenalty;
 
         if (score > bestScore) {
             bestScore = score;
