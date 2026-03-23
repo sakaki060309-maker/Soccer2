@@ -1473,6 +1473,27 @@ function getPassLanePenalty(passer, receiver, opponents) {
 
     
 // ======================================================
+// 14.5 距離スコア関数（パス専用・ピーク型）
+// ======================================================
+function getDistanceScore(distance) {
+    const ideal = 100;
+
+    // 中央ピーク（100付近が最大）
+    let score =
+        60 - Math.pow((distance - ideal) / 60, 2) * 80;
+
+    // 遠距離ペナルティ（200以降を強く抑制）
+    if (distance > 200) {
+        score -= Math.pow((distance - 200) / 100, 2) * 200;
+    }
+
+    // 下限
+    if (score < -1000) score = -1000;
+
+    return score;
+}
+
+// ======================================================
 // 15. Pass target
 // 簡易オフサイド対応版（相手の最終ラインxを直接使用）
 // 一時停止時表示 + 常時 passRank 更新版
@@ -1557,12 +1578,7 @@ function chooseBestPassTarget(passer, team) {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // ===== 距離スコア =====
-        let distanceScore = 0;
-        if (distance < 50) distanceScore = -30;
-        else if (distance < 120) distanceScore = 60;
-        else if (distance < 200) distanceScore = 20;
-        else if (distance < 400) distanceScore = -250;
-        else distanceScore = -1000;
+        const distanceScore = getDistanceScore(distance);
 
         // ===== 敵との距離 =====
         let nearestOpponentDistance = Infinity;
