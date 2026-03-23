@@ -1476,6 +1476,7 @@ function getPassLanePenalty(passer, receiver, opponents) {
 // 15. Pass target
 // 簡易オフサイド対応版（相手の最終ラインxを直接使用）
 // 一時停止時表示 + 常時 passRank 更新版
+// 受け手→ゴール間が空いていれば goalLaneBonus 加点版
 // ======================================================
 function chooseBestPassTarget(passer, team) {
     let bestTarget = null;
@@ -1512,9 +1513,9 @@ function chooseBestPassTarget(passer, team) {
         // 表示を毎回初期化
         mate.passScoreText = '';
 
-        // ===== 簡易オフサイド判定（相手の最終ラインxを直接使う） =====
         const opponentTeam = getOpponentTeam(passer.team);
 
+        // ===== 簡易オフサイド判定（相手の最終ラインxを直接使う） =====
         const mateInAttackingHalf =
             (passer.team === 'red' && mate.x > FIELD_WIDTH / 2) ||
             (passer.team === 'blue' && mate.x < FIELD_WIDTH / 2);
@@ -1578,7 +1579,6 @@ function chooseBestPassTarget(passer, team) {
 
         // ===== 前進量（正なら前、負なら後ろ） =====
         let rawForwardProgress = 0;
-
         if (passer.team === 'red') {
             rawForwardProgress = mate.x - passer.x;
         } else {
@@ -1598,8 +1598,65 @@ function chooseBestPassTarget(passer, team) {
             mate.x, mate.y,
             goalCenterX, goalCenterY
         );
-
         const goalClosenessScore = (FIELD_WIDTH - mateDistanceToGoal) * 0.1;
+
+        // ===== 受け手→ゴール間が空いていれば加点 =====
+        let goalLaneDangerCount = 0;
+        let nearestGoalLaneEnemyDistance = Infinity;
+
+        const ax = mate.x;
+        const ay = mate.y;
+        const bx = goalCenterX;
+        const by = goalCenterY;
+
+        const abx = bx - ax;
+        const aby = by - ay;
+        const abLenSq = abx * abx + aby * aby;
+
+        if (abLenSq > 0) {
+            for (const opponent of opponentTeam) {
+                if (opponent.stunTimer > 0) continue;
+
+                const apx = opponent.x - ax;
+                const apy = opponent.y - ay;
+
+                const rawT = (apx * abx + apy * aby) / abLenSq;
+
+                // 受け手とゴールの間にいる敵だけ見る
+                if (rawT < 0 || rawT > 1) continue;
+
+                const laneDistance = distancePointToSegment(
+                    opponent.x, opponent.y,
+                    ax, ay,
+                    bx, by
+                );
+
+                if (laneDistance < nearestGoalLaneEnemyDistance) {
+                    nearestGoalLaneEnemyDistance = laneDistance;
+                }
+
+                // 35px以内を「ゴール方向レーン上の危険な敵」とみなす
+                if (laneDistance < 35) {
+                    goalLaneDangerCount++;
+                }
+            }
+        }
+
+        let goalLaneBonus = 0;
+        if (goalLaneDangerCount === 0) {
+            goalLaneBonus = 80;
+        } else if (goalLaneDangerCount === 1) {
+            goalLaneBonus = 20;
+        } else {
+            goalLaneBonus = 0;
+        }
+
+        // かなり真ん中が空いているなら追加で少し加点
+        if (nearestGoalLaneEnemyDistance > 60) {
+            goalLaneBonus += 20;
+        } else if (nearestGoalLaneEnemyDistance > 45) {
+            goalLaneBonus += 10;
+        }
 
         // ===== 敵陣判定 =====
         const passerInAttackingHalf =
@@ -1608,7 +1665,6 @@ function chooseBestPassTarget(passer, team) {
 
         // ===== 敵陣 × 戻り量で減点 =====
         let backwardPassPenalty = 0;
-
         if (passerInAttackingHalf) {
             if (rawForwardProgress < -120) {
                 backwardPassPenalty = 400;
@@ -1627,7 +1683,8 @@ function chooseBestPassTarget(passer, team) {
             totalOpponentDistance * 0.02 +
             distanceScore +
             forwardProgressScore +
-            goalClosenessScore -
+            goalClosenessScore +
+            goalLaneBonus -
             passLanePenalty -
             backwardPassPenalty;
 
