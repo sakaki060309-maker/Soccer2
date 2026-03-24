@@ -2190,6 +2190,7 @@ function updateAttackingTeam(team) {
 // 19. 守備AI
 // press / cover / zoneスライド
 // coverは「8:2カバー位置」に一番近い選手を採用
+// DFは基本pressしない版
 // ======================================================
 function updateDefendingTeam(team, ballHolder) {
     if (!ballHolder) {
@@ -2203,10 +2204,17 @@ function updateDefendingTeam(team, ballHolder) {
 
     const availableDefenders = team.filter(p => p.stunTimer <= 0);
 
-    // 19.1 press役（従来通り、ボール保持者に最も近い選手）
-    const pressingDefender = availableDefenders.length > 0
-        ? getClosestPlayerToTarget(availableDefenders, ballHolder)
-        : null;
+    // 19.1 press役
+    // DF以外を優先してpressにする
+    const nonDFPressCandidates = availableDefenders.filter(p => p.lineType !== 'df');
+
+    const pressingDefender = nonDFPressCandidates.length > 0
+        ? getClosestPlayerToTarget(nonDFPressCandidates, ballHolder)
+        : (
+            availableDefenders.length > 0
+                ? getClosestPlayerToTarget(availableDefenders, ballHolder)
+                : null
+        );
 
     // 19.2 cover役（press以外から、cover地点に最も近い選手）
     const coverCandidates = availableDefenders.filter(p => p !== pressingDefender);
