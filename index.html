@@ -1701,7 +1701,7 @@ function chooseBestPassTarget(passer, team) {
             forwardProgressScore +
             goalClosenessScore +
             goalLaneBonus -
-            passLanePenalty -
+            passLanePenalty * 1.5 -
             backwardPassPenalty;
 
         // ===== 一時停止時表示用 =====
