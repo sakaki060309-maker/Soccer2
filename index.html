@@ -1697,8 +1697,8 @@ function chooseBestPassTarget(passer, team) {
         const score =
             nearestOpponentDistance * 2 +
             totalOpponentDistance * 0.005 +
-            distanceScore +
-            forwardProgressScore +
+            distanceScore * 1.2 +
+            forwardProgressScore * 1.1 +
             goalClosenessScore +
             goalLaneBonus -
             passLanePenalty * 1.5 -
