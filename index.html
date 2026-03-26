@@ -2470,6 +2470,7 @@ function checkInterception() {
 
 //-----------------------------
 // 22. ボールの挙動
+// 受け取った瞬間に一度止める版
 //-----------------------------
 function updateBall() {
     if (!movingBall.active) return;
@@ -2499,6 +2500,11 @@ function updateBall() {
         movingBall.target.hasBall = true;
         movingBall.target.stealProtectionTimer = STEAL_PROTECTION_FRAMES;
         movingBall.sourceTeam = null;
+
+        // 受け取った瞬間に一度止める
+        movingBall.target.targetX = movingBall.target.x;
+        movingBall.target.targetY = movingBall.target.y;
+
         setPlayerAction(movingBall.target, '受ける');
     }
 
@@ -2513,6 +2519,7 @@ function updateBall() {
     }
 }
 
+    
 // ======================================================
 // 23. Goal check
 // ======================================================
