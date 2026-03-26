@@ -1705,7 +1705,7 @@ function chooseBestPassTarget(passer, team) {
             goalClosenessScore +
             goalLaneBonus * 1.3 -
             passLanePenalty * 2.5 -
-            backwardPassPenalty;
+            backwardPassPenalty * 0;
 
         // ===== 一時停止時表示用 =====
         mate.passScoreText = Math.round(score).toString();
