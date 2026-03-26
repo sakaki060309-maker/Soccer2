@@ -927,7 +927,7 @@ function setRunTarget(player) {
         { x: halfX, y: baseRunY + side * 0.7 },
 
         { x: forwardX, y: (baseRunY + centerY) / 2 },
-        { x: halfX,    y: (baseRunY + centerY) / 2 }
+        { x: halfX, y: (baseRunY + centerY) / 2 }
     ];
 
     let best = null;
@@ -997,9 +997,10 @@ function setRunTarget(player) {
                 lineScore = Math.max(0, 180 - distToLine * 3);
             }
 
-            // オフサイド位置：大幅減点
+            // オフサイド位置：深いほど大幅減点
             if (distToLine < 0) {
-                offsidePenalty = 10000;
+                const offsideDepth = -distToLine;
+                offsidePenalty = 10000 + offsideDepth * 50;
             }
 
             // 前残り防止
@@ -1037,6 +1038,8 @@ function setRunTarget(player) {
     player.targetX = best.x;
     player.targetY = best.y;
 }
+
+    
 // ======================================================
 // 10.3 off-ball 行動の点数計算
 // support / wide / run それぞれに点数をつける
